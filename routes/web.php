@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +24,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/inventory', [InventoryController::class, 'store'])->name('products.store');
     Route::post('/serias', [InventoryController::class, 'seriasStore'])->name('serias.store');
 
+
+    Route::get('/customer', [CustomerController::class, 'index'])->name('customer.index');
+    Route::post('/customer', [CustomerController::class, 'store'])->name('customer.store');
 
 });
 

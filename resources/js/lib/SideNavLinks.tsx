@@ -57,8 +57,8 @@ const SideNavLinks: React.FC = () => {
             name: "Customers",
             link: true,
             border: false,
-            startWith: "/",
-            // route: "admin.customers", // ⚠ comment karala
+            startWith: "/customer",
+            route: "customer.index", // ⚠ comment karala
             icon: "UserGroupIcon",
             count: 0,
         },
