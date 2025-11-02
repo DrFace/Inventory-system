@@ -2,29 +2,51 @@ import Authenticated from "@/Layouts/AuthenticatedLayout";
 import React, { useEffect } from "react";
 
 interface InvoiceItem {
-    product_code?: string;
-    product_name?: string;
-    unit_price?: number;
-    quantity?: number;
+    id: number;
+    salesId: number;
+    productId: number;
+    productName?: string;
+    productCode?: string;
+    quantity: number;
+    salePrice: string;
+    descount: string;
+    totalAmount: string;
+    returnQuantity: number;
+    created_at: string;
+    updated_at: string;
 }
 
 interface InvoiceData {
-    invoice_no?: string;
-    date?: string;
+    id: number;
+    customerId: number | null;
+    productId: number[];
+    returnProductId: any;
+    totalQuantity: number;
+    totalAmount: string;
+    paidAmount: string;
+    dueAmount: string;
+    creditAmount: string;
+    cardAmount: string;
+    cashAmount: string;
+    paymentMethod: string;
+    createdBy: number;
+    status: string;
+    billNumber: string;
+    created_at: string;
+    updated_at: string;
+    discount_value: number;
+    items: InvoiceItem[];
     customer_name?: string;
     customer_contact?: string;
     company?: string;
     customer_email?: string;
     customer_address?: string;
-    total_amount?: number;
-    discount_value?: number;
-    net_total?: number;
-    items?: InvoiceItem[];
 }
 
 export default function InvoicePrint({ invoice }: { invoice: InvoiceData }) {
     useEffect(() => {
-        setTimeout(() => window.print(), 500);
+        // setTimeout(() => window.print(), 500);
+        console.log('Printing invoice...', invoice);
     }, []);
 
     return (
@@ -37,8 +59,8 @@ export default function InvoicePrint({ invoice }: { invoice: InvoiceData }) {
                         <div>
                             <h1 className="text-2xl font-bold text-pink-600 tracking-wide">TAX INVOICE</h1>
                             <div className="mt-2 space-y-1 text-xs">
-                                <p><strong>Invoice Number:</strong> {invoice.invoice_no || "_____________________"}</p>
-                                <p><strong>Invoice Date:</strong> {invoice.date || "___________________________"}</p>
+                                <p><strong>Invoice Number:</strong> {invoice.billNumber || "_____________________"}</p>
+                                <p><strong>Invoice Date:</strong> {invoice.created_at || "___________________________"}</p>
                             </div>
                         </div>
 
@@ -84,15 +106,16 @@ export default function InvoicePrint({ invoice }: { invoice: InvoiceData }) {
                         </thead>
                         <tbody>
                             {invoice.items && invoice.items.length > 0 ? invoice.items.map((item, i) => {
-                                const price = item.unit_price ?? 0;
-                                const qty = item.quantity ?? 0;
+                                const price = parseFloat(item.salePrice);
+                                const qty = item.quantity;
+                                const total = parseFloat(item.totalAmount);
                                 return (
                                     <tr key={i}>
-                                        <td className="border border-gray-300 p-1">{item.product_name || "-"}</td>
-                                        <td className="border border-gray-300 p-1">{item.product_code || "-"}</td>
+                                        <td className="border border-gray-300 p-1">{item.productName || "-"}</td>
+                                        <td className="border border-gray-300 p-1">{item.productCode || "-"}</td>
                                         <td className="border border-gray-300 p-1 text-right">{price.toFixed(2)}</td>
                                         <td className="border border-gray-300 p-1 text-center">{qty}</td>
-                                        <td className="border border-gray-300 p-1 text-right">{(price * qty).toFixed(2)}</td>
+                                        <td className="border border-gray-300 p-1 text-right">{total.toFixed(2)}</td>
                                     </tr>
                                 )
                             }) : (
@@ -109,7 +132,7 @@ export default function InvoicePrint({ invoice }: { invoice: InvoiceData }) {
                             <tbody>
                                 <tr>
                                     <td className="border border-gray-300 p-1 font-medium">GOODS VALUE</td>
-                                    <td className="border border-gray-300 p-1">{(invoice.total_amount ?? 0).toFixed(2)}</td>
+                                    <td className="border border-gray-300 p-1">{parseFloat(invoice.totalAmount).toFixed(2)}</td>
                                 </tr>
                                 <tr>
                                     <td className="border border-gray-300 p-1 font-medium">DISCOUNT</td>
@@ -117,15 +140,15 @@ export default function InvoicePrint({ invoice }: { invoice: InvoiceData }) {
                                 </tr>
                                 <tr>
                                     <td className="border border-gray-300 p-1 font-medium">TOTAL</td>
-                                    <td className="border border-gray-300 p-1">{((invoice.net_total ?? 0)).toFixed(2)}</td>
+                                    <td className="border border-gray-300 p-1">{parseFloat(invoice.creditAmount).toFixed(2)}</td>
                                 </tr>
                                 <tr>
                                     <td className="border border-gray-300 p-1 font-medium">VAT 18%</td>
-                                    <td className="border border-gray-300 p-1">{((invoice.net_total ?? 0) * 0.18).toFixed(2)}</td>
+                                    <td className="border border-gray-300 p-1">{(parseFloat(invoice.totalAmount) * 0.18).toFixed(2)}</td>
                                 </tr>
                                 <tr className="bg-pink-100 font-bold">
                                     <td className="border border-gray-300 p-1">GRAND TOTAL</td>
-                                    <td className="border border-gray-300 p-1">{((invoice.net_total ?? 0) * 1.18).toFixed(2)}</td>
+                                    <td className="border border-gray-300 p-1">{(parseFloat(invoice.totalAmount) * 1.18).toFixed(2)}</td>
                                 </tr>
                             </tbody>
                         </table>
