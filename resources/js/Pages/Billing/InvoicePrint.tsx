@@ -44,7 +44,7 @@ interface InvoiceData {
 
 export default function InvoicePrint({ invoice }: { invoice: InvoiceData }) {
     useEffect(() => {
-        // setTimeout(() => window.print(), 500);
+        setTimeout(() => window.print(), 500);
     }, []);
 
     return (
