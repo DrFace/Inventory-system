@@ -20,5 +20,5 @@ jobs:
             cd ..
             cd /var/www/html
             git checkout main
-            git reset --hard
+            git reset --hard origin/main
             git pull
