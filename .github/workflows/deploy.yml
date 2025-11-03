@@ -23,3 +23,5 @@ jobs:
             git pull
             npm install
             npm run build
+            php artisan route:clear
+            php artisan cache:clear
