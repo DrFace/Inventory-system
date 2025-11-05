@@ -52,10 +52,18 @@ export default function Billing({ products: initialProducts }: any) {
 
     // Customer search
     useEffect(() => {
+        const query = customerContact || customerName;
+        
+        // Set loading state immediately when user types
+        if (query.length >= 2) {
+            setIsSearchingCustomer(true);
+        } else {
+            setCustomerSuggestions([]);
+            setIsSearchingCustomer(false);
+        }
+
         const fetchCustomers = async () => {
-            const query = customerContact || customerName;
             if (query.length >= 2) {
-                setIsSearchingCustomer(true);
                 try {
                     const res = await axios.get(`/customers/search?query=${query}`);
                     setCustomerSuggestions(res.data);
@@ -64,9 +72,6 @@ export default function Billing({ products: initialProducts }: any) {
                 } finally {
                     setIsSearchingCustomer(false);
                 }
-            } else {
-                setCustomerSuggestions([]);
-                setIsSearchingCustomer(false);
             }
         };
         
