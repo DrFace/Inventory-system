@@ -2,6 +2,7 @@ import Authenticated from "@/Layouts/AuthenticatedLayout";
 import React, { useState, useEffect } from "react";
 import { Trash2, Plus, Minus } from "lucide-react";
 import axios from "axios";
+import { router } from "@inertiajs/react";
 
 export default function Billing({ products: initialProducts }: any) {
     const [searchName, setSearchName] = useState("");
@@ -13,6 +14,7 @@ export default function Billing({ products: initialProducts }: any) {
     const [customerContact, setCustomerContact] = useState("");
     const [customerSuggestions, setCustomerSuggestions] = useState<any[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+    const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
 
     // Discount fields
     const [discountValue, setDiscountValue] = useState(0);
@@ -53,17 +55,23 @@ export default function Billing({ products: initialProducts }: any) {
         const fetchCustomers = async () => {
             const query = customerContact || customerName;
             if (query.length >= 2) {
+                setIsSearchingCustomer(true);
                 try {
                     const res = await axios.get(`/customers/search?query=${query}`);
                     setCustomerSuggestions(res.data);
                 } catch (err) {
                     console.error(err);
+                } finally {
+                    setIsSearchingCustomer(false);
                 }
             } else {
                 setCustomerSuggestions([]);
+                setIsSearchingCustomer(false);
             }
         };
-        fetchCustomers();
+        
+        const debounceTimer = setTimeout(fetchCustomers, 300);
+        return () => clearTimeout(debounceTimer);
     }, [customerContact, customerName]);
 
     const handleSelectCustomer = (customer: any) => {
@@ -155,227 +163,346 @@ export default function Billing({ products: initialProducts }: any) {
                 <div className="max-w-8xl mx-auto grid grid-cols-3 gap-6">
                     {/* Products Section */}
                     <div className="col-span-2 bg-white rounded-xl shadow p-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
-                            <input
-                                type="text"
-                                placeholder="Search by Name"
-                                value={searchName}
-                                onChange={(e) => setSearchName(e.target.value)}
-                                className="w-full border rounded p-2"
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search by Code"
-                                value={searchCode}
-                                onChange={(e) => setSearchCode(e.target.value)}
-                                className="w-full border rounded p-2"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                            {filteredProducts.map((product: any) => (
-                                <div
-                                    key={product.id}
-                                    className="border rounded p-3 flex flex-col justify-between"
-                                >
-                                    <div>
-                                        <div className="font-semibold">{product.productName}</div>
-                                        <div className="text-sm text-gray-500">
-                                            Rs. {product.sellingPrice}
-                                        </div>
-                                        <div className="text-xs text-gray-400">
-                                            Stock: {product.quantity}
-                                        </div>
-                                        <div className="text-xs text-gray-400">
-                                            Code: {product.productCode}
+                        {!selectedCustomer ? (
+                            <div className="flex flex-col items-center justify-center h-96">
+                                {isSearchingCustomer ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-4"></div>
+                                        <h3 className="text-xl font-semibold text-gray-700">
+                                            Searching customers...
+                                        </h3>
+                                    </>
+                                ) : customerSuggestions.length > 0 ? (
+                                    <div className="w-full">
+                                        <h3 className="text-xl font-semibold text-gray-700 mb-4">
+                                            Select a Customer
+                                        </h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                            {customerSuggestions.map((customer) => (
+                                                <div
+                                                    key={customer.id}
+                                                    onClick={() => handleSelectCustomer(customer)}
+                                                    className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all"
+                                                >
+                                                    <div className="font-semibold text-lg text-gray-800">
+                                                        {customer.name}
+                                                    </div>
+                                                    <div className="text-sm text-gray-600 mt-1">
+                                                        {customer.contactNumber}
+                                                    </div>
+                                                    {customer.email && (
+                                                        <div className="text-xs text-gray-500 mt-1">
+                                                            {customer.email}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                    <button
-                                        className="mt-2 bg-blue-600 text-white py-1 rounded hover:bg-blue-700"
-                                        onClick={() => addToCart(product)}
-                                    >
-                                        Add
-                                    </button>
+                                ) : (customerName || customerContact) && (customerName.length >= 2 || customerContact.length >= 2) ? (
+                                    <div className="text-center">
+                                        <div className="text-gray-400 mb-4">
+                                            <svg
+                                                className="w-24 h-24 mx-auto"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                                            No customers found
+                                        </h3>
+                                        <p className="text-gray-500 mb-4">
+                                            No customers match your search query
+                                        </p>
+                                        <button
+                                            onClick={() => router.visit('/customer')}
+                                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium"
+                                        >
+                                            Add New Customer
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="text-center">
+                                        <div className="text-gray-400 mb-4">
+                                            <svg
+                                                className="w-24 h-24 mx-auto"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                                            Start by searching your customer
+                                        </h3>
+                                        <p className="text-gray-500">
+                                            Enter customer name or contact number in the right panel to begin
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
+                                    <input
+                                        type="text"
+                                        placeholder="Search by Name"
+                                        value={searchName}
+                                        onChange={(e) => setSearchName(e.target.value)}
+                                        className="w-full border rounded p-2"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by Code"
+                                        value={searchCode}
+                                        onChange={(e) => setSearchCode(e.target.value)}
+                                        className="w-full border rounded p-2"
+                                    />
                                 </div>
-                            ))}
-                        </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    {filteredProducts.map((product: any) => (
+                                        <div
+                                            key={product.id}
+                                            className="border rounded p-3 flex flex-col justify-between"
+                                        >
+                                            <div>
+                                                <div className="font-semibold">{product.productName}</div>
+                                                <div className="text-sm text-gray-500">
+                                                    Rs. {product.sellingPrice}
+                                                </div>
+                                                <div className="text-xs text-gray-400">
+                                                    Stock: {product.quantity}
+                                                </div>
+                                                <div className="text-xs text-gray-400">
+                                                    Code: {product.productCode}
+                                                </div>
+                                            </div>
+                                            <button
+                                                className="mt-2 bg-blue-600 text-white py-1 rounded hover:bg-blue-700"
+                                                onClick={() => addToCart(product)}
+                                            >
+                                                Add
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Cart & Payment Section */}
                     <div className="bg-white rounded-xl shadow p-4 flex flex-col">
                         <h2 className="text-lg font-semibold mb-4 border-b pb-2">
-                            Cart Summary
+                            {selectedCustomer ? "Cart Summary" : "Select Customer"}
                         </h2>
 
                         {/* Customer */}
-                        <div className="relative mb-3">
-                            <label className="font-semibold">Customer Contact</label>
-                            <input
-                                type="text"
-                                placeholder="Enter contact number"
-                                value={customerContact}
-                                onChange={(e) => setCustomerContact(e.target.value)}
-                                className="w-full border rounded p-2"
-                            />
-                            {customerSuggestions.length > 0 && (
-                                <ul className="absolute z-10 bg-white border w-full rounded shadow mt-1 max-h-32 overflow-y-auto">
-                                    {customerSuggestions.map((c) => (
-                                        <li
-                                            key={c.id}
-                                            onClick={() => handleSelectCustomer(c)}
-                                            className="p-2 hover:bg-gray-100 cursor-pointer"
-                                        >
-                                            {c.name} ({c.contactNumber})
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
+                        {!selectedCustomer ? (
+                            <>
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                                    <p className="text-sm text-blue-700 font-medium">
+                                        Search for a customer to start billing
+                                    </p>
+                                </div>
+                                <div className="relative mb-3">
+                                    <label className="font-semibold">Customer Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter name"
+                                        value={customerName}
+                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        className="w-full border rounded p-2"
+                                        autoFocus
+                                    />
+                                </div>
 
-                        <div className="relative mb-3">
-                            <label className="font-semibold">Customer Name</label>
-                            <input
-                                type="text"
-                                placeholder="Enter name"
-                                value={customerName}
-                                onChange={(e) => setCustomerName(e.target.value)}
-                                className="w-full border rounded p-2"
-                            />
-                        </div>
+                                <div className="relative mb-3">
+                                    <label className="font-semibold">Customer Contact</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter contact number"
+                                        value={customerContact}
+                                        onChange={(e) => setCustomerContact(e.target.value)}
+                                        className="w-full border rounded p-2"
+                                    />
+                                </div>
 
-                        {/* Discounts & Credit */}
-                        <div className="text-sm text-gray-700 mb-2">
-                            Discount:{" "}
-                            <span className="font-semibold">
-                                {discountType === "percentage"
-                                    ? `${discountValue}%`
-                                    : `Rs. ${discountValue}`}
-                            </span>
-                        </div>
-
-                        {selectedCustomer && selectedCustomer.creditBalance > 0 && (
-                            <div className="text-sm text-gray-700 mb-3">
-                                Credit Balance Used:{" "}
-                                <span className="font-semibold text-blue-600">
-                                    Rs. {selectedCustomer.creditBalance}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Payment */}
-                        <div className="space-y-2 mb-3">
-                            <label className="font-semibold">Cash Payment</label>
-                            <input
-                                type="number"
-                                placeholder="Cash Amount"
-                                value={cashAmount === 0 ? "" : cashAmount}
-                                onChange={(e) =>
-                                    setCashAmount(e.target.value === "" ? 0 : Number(e.target.value))
-                                }
-                                className="w-full border rounded p-2"
-                            />
-                            <label className="font-semibold mt-2">Card Payment</label>
-                            <input
-                                type="number"
-                                placeholder="Card Amount"
-                                value={cardAmount === 0 ? "" : cardAmount}
-                                onChange={(e) =>
-                                    setCardAmount(e.target.value === "" ? 0 : Number(e.target.value))
-                                }
-                                className="w-full border rounded p-2"
-                            />
-                            <label className="font-semibold mt-2">Credit Payment</label>
-                            <input
-                                type="number"
-                                placeholder="Credit Amount"
-                                value={creditAmount === 0 ? "" : creditAmount}
-                                onChange={(e) =>
-                                    setCreditAmount(e.target.value === "" ? 0 : Number(e.target.value))
-                                }
-                                className="w-full border rounded p-2"
-                            />
-                        </div>
-
-                        {/* Totals */}
-                        <div className="flex justify-between mb-1">
-                            <span>Total:</span>
-                            <span className="font-semibold">Rs. {total}</span>
-                        </div>
-                        <div className="flex justify-between mb-1">
-                            <span>Discount:</span>
-                            <span className="font-semibold text-green-600">
-                                - Rs. {discountAmount}
-                            </span>
-                        </div>
-                        {selectedCustomer && (
-                            <div className="flex justify-between mb-1">
-                                <span>Credit Used:</span>
-                                <span className="font-semibold text-blue-600">
-                                    - Rs. {selectedCustomer.creditBalance}
-                                </span>
-                            </div>
-                        )}
-                        <div className="flex justify-between mb-1">
-                            <span>Net Total:</span>
-                            <span className="font-bold text-blue-600">Rs. {netTotal}</span>
-                        </div>
-                        <div className="flex justify-between mb-4">
-                            <span>Balance:</span>
-                            <span className="font-bold text-red-500">Rs. {balance}</span>
-                        </div>
-
-                        {/* Cart Items */}
-                        <div className="flex-1 overflow-y-auto mb-4 border-t pt-2">
-                            {cartItems.map((p) => (
-                                <div
-                                    key={p.id}
-                                    className="flex justify-between items-center border-b py-2"
-                                >
-                                    <div>
-                                        <div className="font-medium">{p.productName}</div>
-                                        <div className="text-sm text-gray-500">
-                                            Rs. {p.sellingPrice}
+                                <div className="text-xs text-gray-500 mt-2">
+                                    Tip: Start typing to search existing customers
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold text-green-900">{customerName}</p>
+                                            <p className="text-sm text-green-700">{customerContact}</p>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
                                         <button
-                                            className="bg-gray-200 p-1 rounded"
-                                            onClick={() => updateQuantity(p.id, -1)}
+                                            onClick={() => {
+                                                setSelectedCustomer(null);
+                                                setCustomerName("");
+                                                setCustomerContact("");
+                                                setCartItems([]);
+                                            }}
+                                            className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
                                         >
-                                            <Minus size={14} />
-                                        </button>
-                                        <span className="font-semibold">{p.quantity}</span>
-                                        <button
-                                            className="bg-gray-200 p-1 rounded"
-                                            onClick={() => updateQuantity(p.id, 1)}
-                                        >
-                                            <Plus size={14} />
-                                        </button>
-                                        <button
-                                            className="bg-red-500 text-white p-1 rounded"
-                                            onClick={() => removeItem(p.id)}
-                                        >
-                                            <Trash2 size={14} />
+                                            Change
                                         </button>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
 
-                        {/* Buttons */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => saveSale("draft")}
-                                className="bg-yellow-400 hover:bg-yellow-500 text-white py-2 rounded-lg font-medium"
-                            >
-                                Save Draft
-                            </button>
-                            <button
-                                onClick={() => saveSale("approved")}
-                                className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium"
-                            >
-                                Print Bill
-                            </button>
-                        </div>
+                                {/* Discounts & Credit */}
+                                <div className="text-sm text-gray-700 mb-2">
+                                    Discount:{" "}
+                                    <span className="font-semibold">
+                                        {discountType === "percentage"
+                                            ? `${discountValue}%`
+                                            : `Rs. ${discountValue}`}
+                                    </span>
+                                </div>
+
+                                {selectedCustomer && selectedCustomer.creditBalance > 0 && (
+                                    <div className="text-sm text-gray-700 mb-3">
+                                        Credit Balance Used:{" "}
+                                        <span className="font-semibold text-blue-600">
+                                            Rs. {selectedCustomer.creditBalance}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Payment */}
+                                <div className="space-y-2 mb-3">
+                                    <label className="font-semibold">Cash Payment</label>
+                                    <input
+                                        type="number"
+                                        placeholder="Cash Amount"
+                                        value={cashAmount === 0 ? "" : cashAmount}
+                                        onChange={(e) =>
+                                            setCashAmount(e.target.value === "" ? 0 : Number(e.target.value))
+                                        }
+                                        className="w-full border rounded p-2"
+                                    />
+                                    <label className="font-semibold mt-2">Card Payment</label>
+                                    <input
+                                        type="number"
+                                        placeholder="Card Amount"
+                                        value={cardAmount === 0 ? "" : cardAmount}
+                                        onChange={(e) =>
+                                            setCardAmount(e.target.value === "" ? 0 : Number(e.target.value))
+                                        }
+                                        className="w-full border rounded p-2"
+                                    />
+                                    <label className="font-semibold mt-2">Credit Payment</label>
+                                    <input
+                                        type="number"
+                                        placeholder="Credit Amount"
+                                        value={creditAmount === 0 ? "" : creditAmount}
+                                        onChange={(e) =>
+                                            setCreditAmount(e.target.value === "" ? 0 : Number(e.target.value))
+                                        }
+                                        className="w-full border rounded p-2"
+                                    />
+                                </div>
+
+                                {/* Totals */}
+                                <div className="flex justify-between mb-1">
+                                    <span>Total:</span>
+                                    <span className="font-semibold">Rs. {total}</span>
+                                </div>
+                                <div className="flex justify-between mb-1">
+                                    <span>Discount:</span>
+                                    <span className="font-semibold text-green-600">
+                                        - Rs. {discountAmount}
+                                    </span>
+                                </div>
+                                {selectedCustomer && selectedCustomer.creditBalance > 0 && (
+                                    <div className="flex justify-between mb-1">
+                                        <span>Credit Used:</span>
+                                        <span className="font-semibold text-blue-600">
+                                            - Rs. {selectedCustomer.creditBalance}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between mb-1">
+                                    <span>Net Total:</span>
+                                    <span className="font-bold text-blue-600">Rs. {netTotal}</span>
+                                </div>
+                                <div className="flex justify-between mb-4">
+                                    <span>Balance:</span>
+                                    <span className="font-bold text-red-500">Rs. {balance}</span>
+                                </div>
+
+                                {/* Cart Items */}
+                                <div className="flex-1 overflow-y-auto mb-4 border-t pt-2">
+                                    {cartItems.map((p) => (
+                                        <div
+                                            key={p.id}
+                                            className="flex justify-between items-center border-b py-2"
+                                        >
+                                            <div>
+                                                <div className="font-medium">{p.productName}</div>
+                                                <div className="text-sm text-gray-500">
+                                                    Rs. {p.sellingPrice}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    className="bg-gray-200 p-1 rounded"
+                                                    onClick={() => updateQuantity(p.id, -1)}
+                                                >
+                                                    <Minus size={14} />
+                                                </button>
+                                                <span className="font-semibold">{p.quantity}</span>
+                                                <button
+                                                    className="bg-gray-200 p-1 rounded"
+                                                    onClick={() => updateQuantity(p.id, 1)}
+                                                >
+                                                    <Plus size={14} />
+                                                </button>
+                                                <button
+                                                    className="bg-red-500 text-white p-1 rounded"
+                                                    onClick={() => removeItem(p.id)}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Buttons */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => saveSale("draft")}
+                                        className="bg-yellow-400 hover:bg-yellow-500 text-white py-2 rounded-lg font-medium"
+                                    >
+                                        Save Draft
+                                    </button>
+                                    <button
+                                        onClick={() => saveSale("approved")}
+                                        className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium"
+                                    >
+                                        Print Bill
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
