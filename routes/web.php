@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index'])->name('products.index');
     Route::post('/inventory', [InventoryController::class, 'store'])->name('products.store');
     Route::post('/stock', [InventoryController::class, 'addStock'])->name('stock.add');
+    Route::get('/inventory/batches/{productId}', [InventoryController::class, 'getBatches'])->name('inventory.batches');
     Route::get('/inventory/{id}/edit', [InventoryController::class, 'show'])->name('products.edit');
     Route::put('/inventory/{id}', [InventoryController::class, 'update'])->name('products.update');
     Route::delete('/inventory/{id}', [InventoryController::class, 'destroy'])->name('products.destroy');

@@ -40,6 +40,7 @@ export default function ProductsIndexPage() {
         { label: "ID", sortField: "id", sortable: true },
         { label: "Product name", sortField: "productName", sortable: true },
         { label: "Series", sortField: "seriasNo", sortable: true },
+        { label: "Batch", sortField: "batchNumber", sortable: true },
         { label: "Buying Price", sortField: "buyingPrice", sortable: true },
         { label: "Selling Price", sortField: "sellingPrice", sortable: true },
         { label: "Quantity", sortField: "quantity", sortable: true },
@@ -108,8 +109,9 @@ export default function ProductsIndexPage() {
                             <TableTd>
                                 {seriasList.find((s: any) => s.id === product.seriasId)?.seriasNo ?? "-"}
                             </TableTd>
-                            <TableTd>LKR {product.buyingPrice}</TableTd>
-                            <TableTd>LKR {product.sellingPrice}</TableTd>
+                            <TableTd>{product.batchNumber ?? "-"}</TableTd>
+                            <TableTd>LKR {product.buyingPrice ?? "-"}</TableTd>
+                            <TableTd>LKR {product.sellingPrice ?? "-"}</TableTd>
                             <TableTd>{product.quantity}</TableTd>
                             <TableTd>{product.purchaseDate ?? "-"}</TableTd>
                             <TableTd>

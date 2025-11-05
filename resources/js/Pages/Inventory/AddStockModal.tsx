@@ -12,6 +12,10 @@ export default function AddStockModal({
     onStockAdded: (s: any) => void;
     productsList: { id: number; productName: string; productCode: string }[];
 }) {
+    const [stockMode, setStockMode] = useState<"new" | "existing">("new");
+    const [availableBatches, setAvailableBatches] = useState<any[]>([]);
+    const [selectedBatch, setSelectedBatch] = useState<any>(null);
+    
     const [form, setForm] = useState({
         productId: "",
         buyingPrice: "",
@@ -21,7 +25,6 @@ export default function AddStockModal({
         quantity: "",
         batchNumber: "",
         purchaseDate: "",
-        expiryDate: "",
     });
 
     const [errors, setErrors] = useState<{ [key: string]: string[] }>({});
@@ -31,19 +34,55 @@ export default function AddStockModal({
 
     // Auto-calculate selling price
     useEffect(() => {
-        const buying = parseFloat(form.buyingPrice) || 0;
-        const taxPercent = parseFloat(form.tax) || 0;
-        const profitPercent = parseFloat(form.profitMargin) || 0;
+        if (stockMode === "new") {
+            const buying = parseFloat(form.buyingPrice) || 0;
+            const taxPercent = parseFloat(form.tax) || 0;
+            const profitPercent = parseFloat(form.profitMargin) || 0;
+            
+            const taxAmount = (buying * taxPercent) / 100;
+            const profitAmount = (buying * profitPercent) / 100;
+            const calculated = buying + taxAmount + profitAmount;
+            
+            setForm((prev) => ({
+                ...prev,
+                sellingPrice: calculated > 0 ? calculated.toFixed(2) : "",
+            }));
+        }
+    }, [form.buyingPrice, form.tax, form.profitMargin, stockMode]);
+
+    // Fetch batches when product is selected in existing mode
+    useEffect(() => {
+        if (stockMode === "existing" && form.productId) {
+            fetchBatchesForProduct(form.productId);
+        }
+    }, [stockMode, form.productId]);
+
+    const fetchBatchesForProduct = async (productId: string) => {
+        try {
+            const response = await axios.get(`/inventory/batches/${productId}`);
+            setAvailableBatches(response.data.batches || []);
+        } catch (error) {
+            console.error("Error fetching batches:", error);
+            setAvailableBatches([]);
+        }
+    };
+
+    const handleBatchSelection = (batchId: string) => {
+        const batch = availableBatches.find((b) => b.id === parseInt(batchId));
+        setSelectedBatch(batch);
         
-        const taxAmount = (buying * taxPercent) / 100;
-        const profitAmount = (buying * profitPercent) / 100;
-        const calculated = buying + taxAmount + profitAmount;
-        
-        setForm((prev) => ({
-            ...prev,
-            sellingPrice: calculated > 0 ? calculated.toFixed(2) : "",
-        }));
-    }, [form.buyingPrice, form.tax, form.profitMargin]);
+        if (batch) {
+            setForm((prev) => ({
+                ...prev,
+                buyingPrice: batch.buyingPrice,
+                tax: batch.tax,
+                profitMargin: batch.profitMargin,
+                sellingPrice: batch.sellingPrice,
+                batchNumber: batch.batchNumber,
+                purchaseDate: batch.purchaseDate,
+            }));
+        }
+    };
 
     const handleChange = (
         e: React.ChangeEvent<
@@ -65,37 +104,34 @@ export default function AddStockModal({
         if (!form.productId) {
             validationErrors.productId = ["Please select a product"];
         }
-        if (!form.buyingPrice || parseFloat(form.buyingPrice) <= 0) {
-            validationErrors.buyingPrice = ["Buying price is required and must be greater than 0"];
+
+        if (stockMode === "existing" && !selectedBatch) {
+            validationErrors.batchNumber = ["Please select a batch"];
         }
-        if (form.tax === "" || parseFloat(form.tax) < 0) {
-            validationErrors.tax = ["Tax is required and cannot be negative"];
-        }
-        if (form.profitMargin === "" || parseFloat(form.profitMargin) < 0) {
-            validationErrors.profitMargin = ["Profit margin is required and cannot be negative"];
-        }
-        if (!form.sellingPrice || parseFloat(form.sellingPrice) <= 0) {
-            validationErrors.sellingPrice = ["Selling price must be greater than 0"];
-        }
+
         if (!form.quantity || parseInt(form.quantity) <= 0) {
             validationErrors.quantity = ["Quantity is required and must be at least 1"];
         }
-        if (!form.batchNumber || form.batchNumber.trim() === "") {
-            validationErrors.batchNumber = ["Batch number is required"];
-        }
-        if (!form.purchaseDate) {
-            validationErrors.purchaseDate = ["Purchase date is required"];
-        }
-        if (!form.expiryDate) {
-            validationErrors.expiryDate = ["Expiry date is required"];
-        }
 
-        // Validate expiry date is after purchase date
-        if (form.purchaseDate && form.expiryDate) {
-            const purchase = new Date(form.purchaseDate);
-            const expiry = new Date(form.expiryDate);
-            if (expiry <= purchase) {
-                validationErrors.expiryDate = ["Expiry date must be after purchase date"];
+        // Only validate these fields for new batch mode
+        if (stockMode === "new") {
+            if (!form.buyingPrice || parseFloat(form.buyingPrice) <= 0) {
+                validationErrors.buyingPrice = ["Buying price is required and must be greater than 0"];
+            }
+            if (form.tax === "" || parseFloat(form.tax) < 0) {
+                validationErrors.tax = ["Tax is required and cannot be negative"];
+            }
+            if (form.profitMargin === "" || parseFloat(form.profitMargin) < 0) {
+                validationErrors.profitMargin = ["Profit margin is required and cannot be negative"];
+            }
+            if (!form.sellingPrice || parseFloat(form.sellingPrice) <= 0) {
+                validationErrors.sellingPrice = ["Selling price must be greater than 0"];
+            }
+            if (!form.batchNumber || form.batchNumber.trim() === "") {
+                validationErrors.batchNumber = ["Batch number is required"];
+            }
+            if (!form.purchaseDate) {
+                validationErrors.purchaseDate = ["Purchase date is required"];
             }
         }
 
@@ -111,11 +147,21 @@ export default function AddStockModal({
             await axios.get("/sanctum/csrf-cookie");
 
             const formData = new FormData();
-            Object.entries(form).forEach(([key, value]) => {
-                if (value !== "" && value !== null) {
-                    formData.append(key, value as any);
-                }
-            });
+            
+            if (stockMode === "existing") {
+                // For existing batch, only send productId (batch ID) and quantity
+                formData.append("batchId", selectedBatch.id);
+                formData.append("quantity", form.quantity);
+                formData.append("mode", "existing");
+            } else {
+                // For new batch, send all fields
+                Object.entries(form).forEach(([key, value]) => {
+                    if (value !== "" && value !== null) {
+                        formData.append(key, value as any);
+                    }
+                });
+                formData.append("mode", "new");
+            }
 
             const { data } = await axios.post("/stock", formData, {
                 headers: { Accept: "application/json" },
@@ -154,6 +200,61 @@ export default function AddStockModal({
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-3">
+                    {/* Stock Mode Selection */}
+                    <div className="col-span-2 bg-gray-50 p-3 rounded">
+                        <label className="block text-sm font-medium mb-2">
+                            Stock Mode <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex gap-4">
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="radio"
+                                    value="new"
+                                    checked={stockMode === "new"}
+                                    onChange={(e) => {
+                                        setStockMode(e.target.value as "new" | "existing");
+                                        setSelectedBatch(null);
+                                        setForm({
+                                            productId: form.productId,
+                                            buyingPrice: "",
+                                            tax: "",
+                                            profitMargin: "",
+                                            sellingPrice: "",
+                                            quantity: "",
+                                            batchNumber: "",
+                                            purchaseDate: "",
+                                        });
+                                    }}
+                                    className="mr-2"
+                                />
+                                <span className="text-sm">Create New Batch</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="radio"
+                                    value="existing"
+                                    checked={stockMode === "existing"}
+                                    onChange={(e) => {
+                                        setStockMode(e.target.value as "new" | "existing");
+                                        setSelectedBatch(null);
+                                        setForm({
+                                            productId: form.productId,
+                                            buyingPrice: "",
+                                            tax: "",
+                                            profitMargin: "",
+                                            sellingPrice: "",
+                                            quantity: "",
+                                            batchNumber: "",
+                                            purchaseDate: "",
+                                        });
+                                    }}
+                                    className="mr-2"
+                                />
+                                <span className="text-sm">Add to Existing Batch</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2">
                             <label className="block text-sm font-medium">
@@ -180,7 +281,37 @@ export default function AddStockModal({
                             )}
                         </div>
 
-                        <div>
+                        {/* Batch Selection for Existing Mode */}
+                        {stockMode === "existing" && form.productId && (
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium">
+                                    Select Batch <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={selectedBatch?.id || ""}
+                                    onChange={(e) => handleBatchSelection(e.target.value)}
+                                    className="w-full border p-2 rounded"
+                                    required
+                                >
+                                    <option value="">Select Batch</option>
+                                    {availableBatches.map((batch) => (
+                                        <option key={batch.id} value={batch.id}>
+                                            Batch: {batch.batchNumber} - Stock: {batch.quantity} - Rs. {batch.sellingPrice}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.batchNumber && (
+                                    <p className="text-red-500 text-sm">
+                                        {errors.batchNumber[0]}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Show all fields for new batch mode */}
+                        {stockMode === "new" && (
+                            <>
+                                <div>
                             <label className="block text-sm font-medium">
                                 Buying Price <span className="text-red-500">*</span>
                             </label>
@@ -323,25 +454,35 @@ export default function AddStockModal({
                                 </p>
                             )}
                         </div>
+                            </>
+                        )}
 
-                        <div>
-                            <label className="block text-sm font-medium">
-                                Expiry Date <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="date"
-                                name="expiryDate"
-                                value={form.expiryDate}
-                                onChange={handleChange}
-                                className="w-full border p-2 rounded"
-                                required
-                            />
-                            {errors.expiryDate && (
-                                <p className="text-red-500 text-sm">
-                                    {errors.expiryDate[0]}
+                        {/* Quantity field - shown for both modes */}
+                        {stockMode === "existing" && selectedBatch && (
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium">
+                                    Quantity to Add <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    name="quantity"
+                                    value={form.quantity}
+                                    onChange={handleChange}
+                                    placeholder="Quantity to add"
+                                    className="w-full border p-2 rounded"
+                                    required
+                                    min="1"
+                                />
+                                {errors.quantity && (
+                                    <p className="text-red-500 text-sm">
+                                        {errors.quantity[0]}
+                                    </p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Current stock: {selectedBatch.quantity}
                                 </p>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-2 mt-4">

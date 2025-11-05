@@ -15,6 +15,7 @@ class InventoryController extends Controller
             'id',
             'productName',
             'seriasId',
+            'batchNumber',
             'buyingPrice',
             'sellingPrice',
             'quantity',
@@ -74,6 +75,25 @@ class InventoryController extends Controller
 
     public function addStock(Request $request)
     {
+        $mode = $request->input('mode', 'new');
+
+        if ($mode === 'existing') {
+            // Adding to existing batch
+            $validated = $request->validate([
+                'batchId'   => 'required|integer|exists:products,id',
+                'quantity'  => 'required|integer|min:1',
+            ]);
+
+            $product = Product::findOrFail($validated['batchId']);
+            $product->increment('quantity', $validated['quantity']);
+
+            return response()->json([
+                'message' => "Added {$validated['quantity']} units to batch {$product->batchNumber}. New stock: {$product->quantity}",
+                'stock'   => $product->fresh(),
+            ], 200);
+        }
+
+        // Creating new batch (existing logic)
         $validated = $request->validate([
             'productId'     => 'required|integer|exists:products,id',
             'buyingPrice'   => 'required|numeric',
@@ -98,7 +118,7 @@ class InventoryController extends Controller
                 'quantity'      => $validated['quantity'],
                 'batchNumber'   => $validated['batchNumber'],
                 'purchaseDate'  => $validated['purchaseDate'],
-                'expiryDate'    => $validated['expiryDate'],
+                'expiryDate'    => $validated['expiryDate'] ?? null,
             ]);
 
             return response()->json([
@@ -124,7 +144,7 @@ class InventoryController extends Controller
                 'quantity'           => $validated['quantity'],
                 'batchNumber'        => $validated['batchNumber'],
                 'purchaseDate'       => $validated['purchaseDate'],
-                'expiryDate'         => $validated['expiryDate'],
+                'expiryDate'         => $validated['expiryDate'] ?? null,
             ]);
 
             return response()->json([
@@ -199,6 +219,27 @@ class InventoryController extends Controller
         return response()->json([
             'message' => 'Product updated successfully',
             'product' => $product,
+        ], 200);
+    }
+
+    public function getBatches($productId)
+    {
+        // Get all products (batches) with the same product details
+        $baseProduct = Product::find($productId);
+        
+        if (!$baseProduct) {
+            return response()->json(['message' => 'Product not found'], 404);
+        }
+
+        // Find all batches for this product (same productName and productCode)
+        $batches = Product::where('productName', $baseProduct->productName)
+            ->where('productCode', $baseProduct->productCode)
+            ->whereNotNull('buyingPrice')
+            ->select('id', 'batchNumber', 'quantity', 'buyingPrice', 'tax', 'profitMargin', 'sellingPrice', 'purchaseDate')
+            ->get();
+
+        return response()->json([
+            'batches' => $batches,
         ], 200);
     }
 }
