@@ -22,5 +22,4 @@ jobs:
             git checkout main
             git pull
             npm install
-            php artisan migrate
             npm run build
