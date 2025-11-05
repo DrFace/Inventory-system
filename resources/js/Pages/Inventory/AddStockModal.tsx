@@ -1,0 +1,361 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
+
+export default function AddStockModal({
+    isOpen,
+    onClose,
+    onStockAdded,
+    productsList,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onStockAdded: (s: any) => void;
+    productsList: { id: number; productName: string; productCode: string }[];
+}) {
+    const [form, setForm] = useState({
+        productId: "",
+        buyingPrice: "",
+        tax: "",
+        profitMargin: "",
+        sellingPrice: "",
+        quantity: "",
+        batchNumber: "",
+        purchaseDate: "",
+        expiryDate: "",
+    });
+
+    const [errors, setErrors] = useState<{ [key: string]: string[] }>({});
+    const [loading, setLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [successMsg, setSuccessMsg] = useState("");
+
+    // Auto-calculate selling price
+    useEffect(() => {
+        const buying = parseFloat(form.buyingPrice) || 0;
+        const tax = parseFloat(form.tax) || 0;
+        const profit = parseFloat(form.profitMargin) || 0;
+        const calculated = buying + tax + profit;
+        setForm((prev) => ({
+            ...prev,
+            sellingPrice: calculated > 0 ? calculated.toFixed(2) : "",
+        }));
+    }, [form.buyingPrice, form.tax, form.profitMargin]);
+
+    const handleChange = (
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >
+    ) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
+        setErrors((prev) => ({ ...prev, [name]: [] }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setErrors({});
+
+        // Validate form fields
+        const validationErrors: { [key: string]: string[] } = {};
+
+        if (!form.productId) {
+            validationErrors.productId = ["Please select a product"];
+        }
+        if (!form.buyingPrice || parseFloat(form.buyingPrice) <= 0) {
+            validationErrors.buyingPrice = ["Buying price is required and must be greater than 0"];
+        }
+        if (!form.tax || parseFloat(form.tax) < 0) {
+            validationErrors.tax = ["Tax is required and cannot be negative"];
+        }
+        if (!form.profitMargin || parseFloat(form.profitMargin) < 0) {
+            validationErrors.profitMargin = ["Profit margin is required and cannot be negative"];
+        }
+        if (!form.sellingPrice || parseFloat(form.sellingPrice) <= 0) {
+            validationErrors.sellingPrice = ["Selling price must be greater than 0"];
+        }
+        if (!form.quantity || parseInt(form.quantity) <= 0) {
+            validationErrors.quantity = ["Quantity is required and must be at least 1"];
+        }
+        if (!form.batchNumber || form.batchNumber.trim() === "") {
+            validationErrors.batchNumber = ["Batch number is required"];
+        }
+        if (!form.purchaseDate) {
+            validationErrors.purchaseDate = ["Purchase date is required"];
+        }
+        if (!form.expiryDate) {
+            validationErrors.expiryDate = ["Expiry date is required"];
+        }
+
+        // Validate expiry date is after purchase date
+        if (form.purchaseDate && form.expiryDate) {
+            const purchase = new Date(form.purchaseDate);
+            const expiry = new Date(form.expiryDate);
+            if (expiry <= purchase) {
+                validationErrors.expiryDate = ["Expiry date must be after purchase date"];
+            }
+        }
+
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            axios.defaults.withCredentials = true;
+            await axios.get("/sanctum/csrf-cookie");
+
+            const formData = new FormData();
+            Object.entries(form).forEach(([key, value]) => {
+                if (value !== "" && value !== null) {
+                    formData.append(key, value as any);
+                }
+            });
+
+            const { data } = await axios.post("/stock", formData, {
+                headers: { Accept: "application/json" },
+            });
+
+            onStockAdded(data.stock);
+            setSuccessMsg(data.message || "Stock added successfully!");
+            setShowSuccess(true);
+
+            setTimeout(() => {
+                setShowSuccess(false);
+                onClose();
+            }, 1500);
+        } catch (error: any) {
+            if (error.response?.status === 422) {
+                setErrors(error.response.data.errors || {});
+            } else {
+                console.error("Submit error:", error);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+            <div className="bg-white rounded-lg p-6 w-[600px] max-h-[80vh] overflow-y-auto shadow-lg">
+                <h2 className="text-lg font-bold mb-4">Add Stock</h2>
+
+                {showSuccess && (
+                    <div className="bg-green-100 text-green-700 p-2 rounded mb-2 text-sm">
+                        ✅ {successMsg}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium">
+                                Product <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                name="productId"
+                                value={form.productId}
+                                onChange={handleChange}
+                                className="w-full border p-2 rounded"
+                                required
+                            >
+                                <option value="">Select Product</option>
+                                {productsList.map((product) => (
+                                    <option key={product.id} value={product.id}>
+                                        {product.productCode} - {product.productName}
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.productId && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.productId[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">
+                                Buying Price <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="buyingPrice"
+                                value={form.buyingPrice}
+                                onChange={handleChange}
+                                placeholder="Buying Price"
+                                className="w-full border p-2 rounded"
+                                required
+                            />
+                            {errors.buyingPrice && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.buyingPrice[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">
+                                Tax <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="tax"
+                                value={form.tax}
+                                onChange={handleChange}
+                                placeholder="Tax"
+                                className="w-full border p-2 rounded"
+                                required
+                            />
+                            {errors.tax && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.tax[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">
+                                Profit Margin <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="profitMargin"
+                                value={form.profitMargin}
+                                onChange={handleChange}
+                                placeholder="Profit Margin (flat)"
+                                className="w-full border p-2 rounded"
+                                required
+                            />
+                            {errors.profitMargin && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.profitMargin[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">
+                                Selling Price (Auto) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="sellingPrice"
+                                value={form.sellingPrice}
+                                readOnly
+                                className="w-full border p-2 rounded bg-gray-100 text-gray-600"
+                            />
+                            {errors.sellingPrice && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.sellingPrice[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">
+                                Quantity <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                name="quantity"
+                                value={form.quantity}
+                                onChange={handleChange}
+                                placeholder="Quantity"
+                                className="w-full border p-2 rounded"
+                                required
+                                min="1"
+                            />
+                            {errors.quantity && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.quantity[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">
+                                Batch Number <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="batchNumber"
+                                value={form.batchNumber}
+                                onChange={handleChange}
+                                placeholder="Batch Number"
+                                className="w-full border p-2 rounded"
+                                required
+                            />
+                            {errors.batchNumber && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.batchNumber[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">
+                                Purchase Date <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                name="purchaseDate"
+                                value={form.purchaseDate}
+                                onChange={handleChange}
+                                className="w-full border p-2 rounded"
+                                required
+                            />
+                            {errors.purchaseDate && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.purchaseDate[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">
+                                Expiry Date <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                name="expiryDate"
+                                value={form.expiryDate}
+                                onChange={handleChange}
+                                className="w-full border p-2 rounded"
+                                required
+                            />
+                            {errors.expiryDate && (
+                                <p className="text-red-500 text-sm">
+                                    {errors.expiryDate[0]}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {loading ? "Saving..." : "Add Stock"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}

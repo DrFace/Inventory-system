@@ -4,6 +4,7 @@ import Authenticated from "@/Layouts/AuthenticatedLayout";
 import MasterTable, { TableBody, TableTd } from "@/Components/elements/tables/masterTable";
 import CreateProductModal from "./CreateProductModal";
 import CreateSeriasModal from "./CreateSeriasModal";
+import AddStockModal from "./AddStockModal";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import ConfirmButton from "@/Components/elements/buttons/ConfirmButton";
 import { PrimaryLink } from "@/Components/elements/buttons/PrimaryButton";
@@ -15,6 +16,7 @@ export default function ProductsIndexPage() {
     const [products, setProducts] = useState(initialProducts);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [isSeriasModalOpen, setIsSeriasModalOpen] = useState(false);
+    const [isStockModalOpen, setIsStockModalOpen] = useState(false);
 
     // When a new product is created, merge into .data
     const handleProductCreated = (newProduct: any) => {
@@ -26,6 +28,11 @@ export default function ProductsIndexPage() {
 
     const handleSeriasCreated = (newSerias: any) => {
         console.log("New series added:", newSerias);
+    };
+
+    const handleStockAdded = (newStock: any) => {
+        console.log("Stock added:", newStock);
+        window.location.reload();
     };
 
     const tableColumns = [
@@ -49,6 +56,12 @@ export default function ProductsIndexPage() {
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold">Products</h2>
                     <div className="flex gap-2">
+                        <button
+                            onClick={() => setIsStockModalOpen(true)}
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg"
+                        >
+                            Add Stock
+                        </button>
                         <button
                             onClick={() => setIsProductModalOpen(true)}
                             className="px-4 py-2 bg-blue-500 text-white rounded-lg"
@@ -119,6 +132,12 @@ export default function ProductsIndexPage() {
                     isOpen={isSeriasModalOpen}
                     onClose={() => setIsSeriasModalOpen(false)}
                     onCreated={handleSeriasCreated}
+                />
+                <AddStockModal
+                    isOpen={isStockModalOpen}
+                    onClose={() => setIsStockModalOpen(false)}
+                    onStockAdded={handleStockAdded}
+                    productsList={products.data}
                 />
             </div>
         </Authenticated>
