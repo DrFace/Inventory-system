@@ -32,9 +32,13 @@ export default function AddStockModal({
     // Auto-calculate selling price
     useEffect(() => {
         const buying = parseFloat(form.buyingPrice) || 0;
-        const tax = parseFloat(form.tax) || 0;
-        const profit = parseFloat(form.profitMargin) || 0;
-        const calculated = buying + tax + profit;
+        const taxPercent = parseFloat(form.tax) || 0;
+        const profitPercent = parseFloat(form.profitMargin) || 0;
+        
+        const taxAmount = (buying * taxPercent) / 100;
+        const profitAmount = (buying * profitPercent) / 100;
+        const calculated = buying + taxAmount + profitAmount;
+        
         setForm((prev) => ({
             ...prev,
             sellingPrice: calculated > 0 ? calculated.toFixed(2) : "",
@@ -64,10 +68,10 @@ export default function AddStockModal({
         if (!form.buyingPrice || parseFloat(form.buyingPrice) <= 0) {
             validationErrors.buyingPrice = ["Buying price is required and must be greater than 0"];
         }
-        if (!form.tax || parseFloat(form.tax) < 0) {
+        if (form.tax === "" || parseFloat(form.tax) < 0) {
             validationErrors.tax = ["Tax is required and cannot be negative"];
         }
-        if (!form.profitMargin || parseFloat(form.profitMargin) < 0) {
+        if (form.profitMargin === "" || parseFloat(form.profitMargin) < 0) {
             validationErrors.profitMargin = ["Profit margin is required and cannot be negative"];
         }
         if (!form.sellingPrice || parseFloat(form.sellingPrice) <= 0) {
@@ -199,7 +203,7 @@ export default function AddStockModal({
 
                         <div>
                             <label className="block text-sm font-medium">
-                                Tax <span className="text-red-500">*</span>
+                                Tax (%) <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="number"
@@ -207,9 +211,10 @@ export default function AddStockModal({
                                 name="tax"
                                 value={form.tax}
                                 onChange={handleChange}
-                                placeholder="Tax"
+                                placeholder="Tax %"
                                 className="w-full border p-2 rounded"
                                 required
+                                min="0"
                             />
                             {errors.tax && (
                                 <p className="text-red-500 text-sm">
@@ -220,7 +225,7 @@ export default function AddStockModal({
 
                         <div>
                             <label className="block text-sm font-medium">
-                                Profit Margin <span className="text-red-500">*</span>
+                                Profit Margin (%) <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="number"
@@ -228,9 +233,10 @@ export default function AddStockModal({
                                 name="profitMargin"
                                 value={form.profitMargin}
                                 onChange={handleChange}
-                                placeholder="Profit Margin (flat)"
+                                placeholder="Profit Margin %"
                                 className="w-full border p-2 rounded"
                                 required
+                                min="0"
                             />
                             {errors.profitMargin && (
                                 <p className="text-red-500 text-sm">
