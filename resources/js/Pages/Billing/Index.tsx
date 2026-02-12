@@ -33,6 +33,9 @@ export default function Billing({ products: initialProducts }: any) {
         "LKR",
     );
     const [exchangeRate, setExchangeRate] = useState<number>(320);
+    
+    // Print mode (full vs details-only for pre-printed templates)
+    const [printMode, setPrintMode] = useState<"full" | "details">("details");
 
     // Fetch exchange rate on mount
     useEffect(() => {
@@ -336,8 +339,12 @@ export default function Billing({ products: initialProducts }: any) {
             if (status === "approved" && saleId) {
                 const currencyParam =
                     displayCurrency === "USD" ? "?currency=USD" : "";
+                
+                const printModeParam = `&mode=${printMode}`;
+                const finalParams = currencyParam ? `${currencyParam}${printModeParam}` : `?mode=${printMode}`;
+
                 window.open(
-                    `/billing/print/${saleId}${currencyParam}`,
+                    `/billing/print/${saleId}${finalParams}`,
                     "_blank",
                 );
 
@@ -784,6 +791,50 @@ export default function Billing({ products: initialProducts }: any) {
                                     <p className="text-xs text-gray-500 mt-2">
                                         Select currency for invoice display
                                         (stored as LKR)
+                                    </p>
+                                </div>
+
+                                {/* Print Mode Toggle */}
+                                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl shadow-sm">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <label className="text-sm font-bold text-blue-900 uppercase tracking-wider">
+                                            Print Mode
+                                        </label>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${printMode === 'details' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                                            {printMode === 'details' ? 'PRE-PRINTED' : 'FULL'}
+                                        </span>
+                                    </div>
+                                    <div className="flex p-1 bg-gray-200 rounded-lg relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPrintMode("details")}
+                                            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all duration-200 z-10 ${
+                                                printMode === "details"
+                                                    ? "text-blue-600 bg-white shadow-sm"
+                                                    : "text-gray-500 hover:text-gray-700"
+                                            }`}
+                                        >
+                                            Details Only
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPrintMode("full")}
+                                            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all duration-200 z-10 ${
+                                                printMode === "full"
+                                                    ? "text-blue-600 bg-white shadow-sm"
+                                                    : "text-gray-500 hover:text-gray-700"
+                                            }`}
+                                        >
+                                            Full Invoice
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-blue-700 mt-3 flex items-center gap-1">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        {printMode === "details" 
+                                            ? "Prints only data on your pre-printed stationery."
+                                            : "Prints complete invoice layout and data."}
                                     </p>
                                 </div>
 

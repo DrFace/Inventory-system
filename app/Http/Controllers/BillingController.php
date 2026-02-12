@@ -124,21 +124,44 @@ class BillingController extends Controller
 
     public function invoice($id, Request $request)
     {
-        $sale = Sales::with([
-            'items.product:id,productName,productCode',
-            'customer:id,name,contactNumber,email,address,vatNumber,discount_category_id',
-            'customer.discountCategory:id,name,type,value'
-        ])->findOrFail($id);
+        if ($id === 'template') {
+            $sale = (object)[
+                'id' => 0,
+                'invoice_number' => 'INV-XXXX',
+                'created_at' => now()->format('Y-m-d H:i:s'),
+                'customer_name' => 'CUSTOMER NAME',
+                'customer_contact' => '07XXXXXXXX',
+                'customer_email' => 'customer@example.com',
+                'customer_address' => 'Customer Address',
+                'customer_vat_number' => 'VAT-XXXX',
+                'payment_method' => 'CASH',
+                'status' => 'approved',
+                'total_amount' => 0,
+                'discount_amount' => 0,
+                'discount_type' => 'fixed',
+                'discount_value' => 0,
+                'net_total' => 0,
+                'paid_amount' => 0,
+                'balance' => 0,
+                'items' => collect([]),
+                'discount_category_name' => null,
+            ];
+        } else {
+            $sale = Sales::with([
+                'items.product:id,productName,productCode',
+                'customer:id,name,contactNumber,email,address,vatNumber,discount_category_id',
+                'customer.discountCategory:id,name,type,value'
+            ])->findOrFail($id);
+            
+            $sale->items->transform(function ($item) {
+                $item->productName = $item->product?->productName;
+                $item->productCode = $item->product?->productCode;
+                unset($item->product);
+                return $item;
+            });
+        }
         
-        $sale->items->transform(function ($item) {
-            $item->productName = $item->product?->productName;
-            $item->productCode = $item->product?->productCode;
-            unset($item->product);
-            return $item;
-        });
-        
-        
-        if ($sale->customer) {
+        if ($id !== 'template' && $sale->customer) {
             $sale->customer_name = $sale->customer->name;
             $sale->customer_contact = $sale->customer->contactNumber;
             $sale->customer_email = $sale->customer->email;

@@ -111,6 +111,40 @@ export default function SettingsIndex() {
                 )}
               </div>
 
+              {/* Invoice Template Section */}
+              <div className="mb-6 pt-6 border-t border-gray-200">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-1">
+                      Invoice Template
+                    </label>
+                    <p className="text-sm text-gray-500">
+                      Download or print the background template to use with "Details Only" printing mode.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.open(route("billing.invoice", { id: "template", mode: "template" }), "_blank");
+                    }}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-green-700 border-2 border-green-600 rounded-xl hover:bg-green-50 transition-all font-bold shadow-sm"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Template
+                  </button>
+                </div>
+                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
+                  <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-xs text-yellow-700">
+                    <b>Tip:</b> If you have pre-printed letterheads or stationery, you can use the "Details Only" mode in Billing to print only the data. Otherwise, print this template first or use "Full Invoice" mode.
+                  </p>
+                </div>
+              </div>
+
               <div className="flex justify-end">
                 <button
                   type="submit"
