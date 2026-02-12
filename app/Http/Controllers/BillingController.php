@@ -193,6 +193,7 @@ class BillingController extends Controller
         
         // Get print mode from query parameter (full, template, details)
         $printMode = $request->query('mode', 'full');
+        $download = $request->query('download') == '1';
         
         return Inertia::render('Billing/InvoicePrint', [
             'invoice' => $sale,
@@ -200,6 +201,7 @@ class BillingController extends Controller
             'currency' => $currency,
             'exchangeRate' => $exchangeRate,
             'printMode' => $printMode,
+            'download' => $download,
         ]);
     }
 
@@ -252,11 +254,15 @@ class BillingController extends Controller
             $exchangeRate = $rate ?? 320; // Default to 320 if not set
         }
 
+        // Get default print mode from settings
+        $defaultPrintMode = \App\Models\Setting::getSetting('default_print_mode', 'details');
+
         return Inertia::render('Billing/InvoiceView', [
             'invoice' => $sale,
             'vatNumber' => $vatNumber,
             'currency' => $currency,
             'exchangeRate' => $exchangeRate,
+            'defaultPrintMode' => $defaultPrintMode,
         ]);
     }
 

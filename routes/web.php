@@ -45,7 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing', [BillingController::class, 'store'])->name('billing.store');
     Route::get('/customers/search', [BillingController::class, 'search']);
-    Route::get('/billing/print/{id}', [BillingController::class, 'invoice']);
+    Route::get('/billing/print/{id}', [BillingController::class, 'invoice'])->where('id', '[0-9]+|template')->name('billing.invoice');
 
     // Currency routes
     Route::get('/settings/currency', [CurrencyRateController::class, 'index'])->name('currency.index');

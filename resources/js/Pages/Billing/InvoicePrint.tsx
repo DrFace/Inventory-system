@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 
 interface InvoiceItem {
     id: number;
@@ -52,16 +52,60 @@ export default function InvoicePrint({
     currency = "LKR",
     exchangeRate,
     printMode = "full",
+    download = false,
 }: {
     invoice: InvoiceData;
     vatNumber?: string;
     currency?: string;
     exchangeRate?: number | null;
     printMode?: "full" | "template" | "details";
+    download?: boolean;
 }) {
+    const pdfRootRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
-        setTimeout(() => window.print(), 500);
-    }, []);
+        if (download) {
+            const downloadPdf = async () => {
+                try {
+                    const mod: any = await import("html2pdf.js");
+                    const html2pdf = mod?.default || mod;
+                    const element = pdfRootRef.current;
+                    if (!element) return;
+
+                    const safeBill = (invoice.billNumber || `template`)
+                        .replace(/[^\w\-]+/g, "_")
+                        .slice(0, 80);
+                    const filename = `invoice_${safeBill}.pdf`;
+
+                    await html2pdf()
+                        .set({
+                            margin: 10,
+                            filename: filename,
+                            image: { type: "jpeg", quality: 0.98 },
+                            html2canvas: { scale: 2, useCORS: true },
+                            jsPDF: {
+                                unit: "mm",
+                                format: "a4",
+                                orientation: "portrait",
+                            },
+                            pagebreak: { mode: ["css", "legacy"] },
+                        })
+                        .from(element)
+                        .save();
+                    
+                    // Close the window after download if it's a template download
+                    if (invoice.id === 0) {
+                       setTimeout(() => window.close(), 1000);
+                    }
+                } catch (error) {
+                    console.error("PDF download failed:", error);
+                }
+            };
+            setTimeout(downloadPdf, 1000);
+        } else {
+            setTimeout(() => window.print(), 500);
+        }
+    }, [download, invoice.billNumber, invoice.id]);
 
     // Helper functions...
     const convertPrice = (lkrAmount: string | number): number => {
@@ -85,8 +129,12 @@ export default function InvoicePrint({
     const totalPages = Math.ceil(allItems.length / itemsPerPage);
 
     const itemChunks = [];
-    for (let i = 0; i < allItems.length; i += itemsPerPage) {
-        itemChunks.push(allItems.slice(i, i + itemsPerPage));
+    if (allItems.length > 0) {
+        for (let i = 0; i < allItems.length; i += itemsPerPage) {
+            itemChunks.push(allItems.slice(i, i + itemsPerPage));
+        }
+    } else {
+        itemChunks.push([]); // Crucial for template mode: ensures one blank page renders
     }
 
     const goodsValue = Number.parseFloat(String(invoice.totalAmount || 0)) || 0;
@@ -111,7 +159,7 @@ export default function InvoicePrint({
     });
 
     return (
-        <>
+        <div ref={pdfRootRef}>
             {itemChunks.map((pageItems, pageIndex) => (
                 <div
                     key={pageIndex}
@@ -689,6 +737,6 @@ export default function InvoicePrint({
                     </div>
                 </div>
             ))}
-        </>
+        </div>
     );
 }

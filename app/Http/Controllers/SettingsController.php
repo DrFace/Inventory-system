@@ -13,6 +13,7 @@ class SettingsController extends Controller
     public function index()
     {
         $vatNumber = \App\Models\Setting::getSetting('company_vat_number', '');
+        $defaultPrintMode = \App\Models\Setting::getSetting('default_print_mode', 'details');
         
         // Get current currency rate
         $currencyRate = CurrencyRate::with('updatedByUser')->firstOrCreate(
@@ -22,6 +23,7 @@ class SettingsController extends Controller
         
         return inertia('Settings/Index', [
             'vatNumber' => $vatNumber,
+            'defaultPrintMode' => $defaultPrintMode,
             'currencyRate' => $currencyRate,
         ]);
     }
@@ -34,6 +36,7 @@ class SettingsController extends Controller
         $request->validate([
             'vat_number' => 'nullable|string|max:50',
             'exchange_rate' => 'nullable|numeric|min:0.0001',
+            'default_print_mode' => 'nullable|string|in:full,details',
         ]);
 
         // Update VAT number
@@ -42,6 +45,15 @@ class SettingsController extends Controller
                 'company_vat_number',
                 $request->vat_number,
                 'Company VAT registration number'
+            );
+        }
+
+        // Update Default Print Mode
+        if ($request->has('default_print_mode')) {
+            \App\Models\Setting::setSetting(
+                'default_print_mode',
+                $request->default_print_mode,
+                'Default invoice printing mode (full or details)'
             );
         }
 
