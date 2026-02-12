@@ -10,6 +10,7 @@ export default function Billing({ products: initialProducts, defaultPrintMode }:
     const [searchCode, setSearchCode] = useState("");
     const [cartItems, setCartItems] = useState<any[]>([]);
 
+    
     // Customer fields
     const [customerName, setCustomerName] = useState("");
     const [customerContact, setCustomerContact] = useState("");
@@ -22,6 +23,7 @@ export default function Billing({ products: initialProducts, defaultPrintMode }:
     const [discountType, setDiscountType] = useState<"percentage" | "fixed">(
         "fixed",
     );
+
 
     // Payment fields
     const [paymentType, setPaymentType] = useState<"cash" | "credit">("cash");
