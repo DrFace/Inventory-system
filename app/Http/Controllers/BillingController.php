@@ -168,11 +168,15 @@ class BillingController extends Controller
             $exchangeRate = $rate ?? 320; // Default to 320 if not set
         }
         
+        // Get print mode from query parameter (full, template, details)
+        $printMode = $request->query('mode', 'full');
+        
         return Inertia::render('Billing/InvoicePrint', [
             'invoice' => $sale,
             'vatNumber' => $vatNumber,
             'currency' => $currency,
             'exchangeRate' => $exchangeRate,
+            'printMode' => $printMode,
         ]);
     }
 
