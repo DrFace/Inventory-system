@@ -19,12 +19,14 @@ interface CurrencyRate {
 interface Props {
   vatNumber: string;
   currencyRate: CurrencyRate;
+  defaultPrintMode: "full" | "details";
 }
 
 export default function SettingsIndex() {
-  const { vatNumber: initialVatNumber, currencyRate } = usePage().props as unknown as Props;
+  const { vatNumber: initialVatNumber, currencyRate, defaultPrintMode: initialPrintMode } = usePage().props as unknown as Props;
   const [vatNumber, setVatNumber] = useState(initialVatNumber || "");
   const [exchangeRate, setExchangeRate] = useState(currencyRate?.rate || "320.00");
+  const [defaultPrintMode, setDefaultPrintMode] = useState<"full" | "details">(initialPrintMode || "details");
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -36,6 +38,7 @@ export default function SettingsIndex() {
       {
         vat_number: vatNumber,
         exchange_rate: exchangeRate,
+        default_print_mode: defaultPrintMode,
       },
       {
         onSuccess: () => {
@@ -111,6 +114,38 @@ export default function SettingsIndex() {
                 )}
               </div>
 
+              {/* Default Print Mode Section */}
+              <div className="mb-6 pt-6 border-t border-gray-200">
+                <label className="block text-sm font-medium text-gray-700 mb-4">
+                  Default Invoice Printing Mode
+                </label>
+                <div className="flex p-1 bg-gray-100 rounded-xl border w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setDefaultPrintMode("details")}
+                    className={`px-6 py-2 text-sm font-bold rounded-lg transition-all duration-200 ${defaultPrintMode === "details"
+                        ? "text-blue-600 bg-white shadow-md scale-105"
+                        : "text-gray-500 hover:text-gray-700"
+                      }`}
+                  >
+                    Details Only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDefaultPrintMode("full")}
+                    className={`px-6 py-2 text-sm font-bold rounded-lg transition-all duration-200 ${defaultPrintMode === "full"
+                        ? "text-blue-600 bg-white shadow-md scale-105"
+                        : "text-gray-500 hover:text-gray-700"
+                      }`}
+                  >
+                    Full Invoice
+                  </button>
+                </div>
+                <p className="mt-3 text-sm text-gray-500">
+                  Choose which mode should be selected by default on the Billing and Invoice View pages.
+                </p>
+              </div>
+
               {/* Invoice Template Section */}
               <div className="mb-6 pt-6 border-t border-gray-200">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -125,7 +160,7 @@ export default function SettingsIndex() {
                   <button
                     type="button"
                     onClick={() => {
-                      window.open(route("billing.invoice", { id: "template", mode: "template" }), "_blank");
+                      window.open(route("billing.invoice", { id: "template", mode: "template", download: "1" }), "_blank");
                     }}
                     className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-green-700 border-2 border-green-600 rounded-xl hover:bg-green-50 transition-all font-bold shadow-sm"
                   >

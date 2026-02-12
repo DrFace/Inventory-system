@@ -5,7 +5,7 @@ import axios from "axios";
 import { router } from "@inertiajs/react";
 import { toast } from "react-toastify";
 
-export default function Billing({ products: initialProducts }: any) {
+export default function Billing({ products: initialProducts, defaultPrintMode }: any) {
     const [searchName, setSearchName] = useState("");
     const [searchCode, setSearchCode] = useState("");
     const [cartItems, setCartItems] = useState<any[]>([]);
@@ -35,7 +35,7 @@ export default function Billing({ products: initialProducts }: any) {
     const [exchangeRate, setExchangeRate] = useState<number>(320);
     
     // Print mode (full vs details-only for pre-printed templates)
-    const [printMode, setPrintMode] = useState<"full" | "details">("details");
+    const [printMode, setPrintMode] = useState<"full" | "details">(defaultPrintMode || "details");
 
     // Fetch exchange rate on mount
     useEffect(() => {

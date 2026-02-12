@@ -52,6 +52,7 @@ type Props = {
     vatNumber?: string;
     currency?: string;
     exchangeRate?: number | null;
+    defaultPrintMode?: "full" | "details";
 };
 
 export default function InvoiceView() {
@@ -60,10 +61,11 @@ export default function InvoiceView() {
         vatNumber,
         currency = "LKR",
         exchangeRate,
+        defaultPrintMode,
     } = usePage().props as unknown as Props;
 
     const [downloading, setDownloading] = useState(false);
-    const [printMode, setPrintMode] = useState<"full" | "details">("details");
+    const [printMode, setPrintMode] = useState<"full" | "details">(defaultPrintMode || "details");
     const pdfRootRef = useRef<HTMLDivElement | null>(null);
 
     // Helper function to convert LKR to USD
