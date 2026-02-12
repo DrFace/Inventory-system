@@ -63,6 +63,7 @@ export default function InvoiceView() {
     } = usePage().props as unknown as Props;
 
     const [downloading, setDownloading] = useState(false);
+    const [printMode, setPrintMode] = useState<"full" | "details">("details");
     const pdfRootRef = useRef<HTMLDivElement | null>(null);
 
     // Helper function to convert LKR to USD
@@ -181,54 +182,65 @@ export default function InvoiceView() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            className="px-3 py-1.5 rounded border text-sm bg-gray-50 hover:bg-gray-100"
-                            onClick={() => window.print()}
-                        >
-                            Print Full
-                        </button>
+                    <div className="flex items-center gap-4">
+                        {/* Print Mode Toggle */}
+                        <div className="flex p-1 bg-gray-100 rounded-lg border">
+                            <button
+                                type="button"
+                                onClick={() => setPrintMode("details")}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all duration-200 ${
+                                    printMode === "details"
+                                        ? "text-blue-600 bg-white shadow-sm"
+                                        : "text-gray-500 hover:text-gray-700"
+                                }`}
+                            >
+                                Details Only
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPrintMode("full")}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all duration-200 ${
+                                    printMode === "full"
+                                        ? "text-blue-600 bg-white shadow-sm"
+                                        : "text-gray-500 hover:text-gray-700"
+                                }`}
+                            >
+                                Full Invoice
+                            </button>
+                        </div>
 
                         <button
                             type="button"
-                            className="px-3 py-1.5 rounded border text-sm bg-blue-50 hover:bg-blue-100 text-blue-700"
+                            className="px-4 py-1.5 rounded-lg border-2 border-blue-600 bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-all shadow-sm"
                             onClick={() => {
-                                window.open(
-                                    route("billing.invoice", {
-                                        id: invoice.id,
-                                        mode: "template",
-                                    }),
-                                    "_blank",
-                                );
+                                if (printMode === "full") {
+                                    window.print();
+                                } else {
+                                    window.open(
+                                        route("billing.invoice", {
+                                            id: invoice.id,
+                                            mode: printMode,
+                                        }),
+                                        "_blank",
+                                    );
+                                }
                             }}
                         >
-                            Print Template
+                            Print {printMode === "details" ? "Details" : "Full Bill"}
                         </button>
 
                         <button
                             type="button"
-                            className="px-3 py-1.5 rounded border text-sm bg-green-50 hover:bg-green-100 text-green-700"
-                            onClick={() => {
-                                window.open(
-                                    route("billing.invoice", {
-                                        id: invoice.id,
-                                        mode: "details",
-                                    }),
-                                    "_blank",
-                                );
-                            }}
-                        >
-                            Print Details
-                        </button>
-
-                        <button
-                            type="button"
-                            className="px-3 py-1.5 rounded border text-sm"
+                            className="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-all"
                             onClick={downloadPdf}
                             disabled={downloading}
                         >
-                            {downloading ? "Downloading..." : "Download PDF"}
+                            <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                {downloading ? "Downloading..." : "Download PDF"}
+                            </div>
                         </button>
                     </div>
                 </div>
