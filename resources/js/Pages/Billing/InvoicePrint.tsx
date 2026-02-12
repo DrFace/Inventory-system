@@ -51,17 +51,19 @@ export default function InvoicePrint({
     vatNumber,
     currency = "LKR",
     exchangeRate,
+    printMode = "full",
 }: {
     invoice: InvoiceData;
     vatNumber?: string;
     currency?: string;
     exchangeRate?: number | null;
+    printMode?: "full" | "template" | "details";
 }) {
     useEffect(() => {
         setTimeout(() => window.print(), 500);
     }, []);
 
-    // Helper function to convert LKR to USD
+    // Helper functions...
     const convertPrice = (lkrAmount: string | number): number => {
         const amount =
             typeof lkrAmount === "string" ? parseFloat(lkrAmount) : lkrAmount;
@@ -71,7 +73,6 @@ export default function InvoicePrint({
         return amount;
     };
 
-    // Helper function to format currency
     const formatCurrency = (amount: number): string => {
         if (currency === "USD") {
             return `$${amount.toFixed(2)}`;
@@ -83,26 +84,31 @@ export default function InvoicePrint({
     const itemsPerPage = 5;
     const totalPages = Math.ceil(allItems.length / itemsPerPage);
 
-    // Split items into chunks of 5
     const itemChunks = [];
     for (let i = 0; i < allItems.length; i += itemsPerPage) {
         itemChunks.push(allItems.slice(i, i + itemsPerPage));
     }
 
-    // ✅ VAT-INCLUSIVE totals (matches your layout)
-    const goodsValue = Number.parseFloat(String(invoice.totalAmount || 0)) || 0; // GOODS VALUE
+    const goodsValue = Number.parseFloat(String(invoice.totalAmount || 0)) || 0;
     const discountValue =
-        Number.parseFloat(String(invoice.discount_value || 0)) || 0; // DISCOUNT amount
-
-    // TOTAL after discount (this is what you show as "TOTAL")
+        Number.parseFloat(String(invoice.discount_value || 0)) || 0;
     const totalAfterDiscount = Math.max(0, goodsValue - discountValue);
-
-    // VAT portion using your formula:
-    // VAT 18% = TOTAL - {(TOTAL*100)/118}
     const vatAmount = totalAfterDiscount - (totalAfterDiscount * 100) / 118;
-
-    // ✅ FIX: GRAND TOTAL = TOTAL + VAT 18%
     const grandTotal = totalAfterDiscount + vatAmount;
+
+    // Helper to decide visibility
+    const showTemplate = printMode === "full" || printMode === "template";
+    const showDetails = printMode === "full" || printMode === "details";
+
+    // Style for hiding but keeping layout
+    const detailStyle = (isVisible: boolean) => ({
+        visibility: isVisible ? ("visible" as const) : ("hidden" as const),
+    });
+
+    // Style for completely hiding (for template mode where we don't want to see data)
+    const templateOnlyStyle = (isVisible: boolean) => ({
+        display: isVisible ? undefined : "none",
+    });
 
     return (
         <>
@@ -122,10 +128,10 @@ export default function InvoicePrint({
                     <div className="bg-white font-sans text-[13px] text-gray-900 leading-tight p-6">
                         <div className="max-w-[800px] mx-auto border border-gray-300 shadow-sm my-6 p-6">
                             {/* HEADER */}
-
-                            {/* First Row: Logos and Company Info */}
-                            <div className="flex items-center gap-4 mb-3">
-                                {/* Logos on the LEFT */}
+                            <div
+                                className="flex items-center gap-4 mb-3"
+                                style={detailStyle(showTemplate)}
+                            >
                                 <div className="flex gap-2">
                                     <img
                                         src="/images/eep_logo.jpeg"
@@ -139,7 +145,6 @@ export default function InvoicePrint({
                                     />
                                 </div>
 
-                                {/* Company Name and Details */}
                                 <div className="flex flex-col">
                                     <h1 className="text-4xl font-bold text-black tracking-wide leading-tight">
                                         NAMARATNA
@@ -154,21 +159,34 @@ export default function InvoicePrint({
                                 </div>
                             </div>
 
-                            {/* Second Row: Tax Invoice - Left Aligned */}
-                            <div className="mb-2">
+                            <div
+                                className="mb-2"
+                                style={detailStyle(showTemplate)}
+                            >
                                 <p className="text-lg font-semibold text-gray-900">
                                     Tax Invoice
                                 </p>
                             </div>
+
                             <div className="flex justify-between items-start border-b-2 border-pink-600 pb-2 mb-2">
                                 <div className="mt-2 space-y-1 text-xs">
-                                    <p>
-                                        <strong>Invoice Number:</strong>{" "}
-                                        {invoice.billNumber ||
-                                            "_____________________"}
+                                    <p
+                                        style={detailStyle(
+                                            showTemplate || showDetails,
+                                        )}
+                                    >
+                                        <strong
+                                            style={detailStyle(showTemplate)}
+                                        >
+                                            Invoice Number:
+                                        </strong>{" "}
+                                        <span style={detailStyle(showDetails)}>
+                                            {invoice.billNumber ||
+                                                "_____________________"}
+                                        </span>
                                     </p>
                                     {totalPages > 1 && (
-                                        <p>
+                                        <p style={detailStyle(showTemplate)}>
                                             <strong>Page:</strong>{" "}
                                             {pageIndex + 1} of {totalPages}
                                         </p>
@@ -176,10 +194,20 @@ export default function InvoicePrint({
                                 </div>
 
                                 <div className="mt-2 space-y-1 text-xs">
-                                    <p>
-                                        <strong>Invoice Date:</strong>{" "}
-                                        {invoice.created_at.split("T")[0] ||
-                                            "___________________________"}
+                                    <p
+                                        style={detailStyle(
+                                            showTemplate || showDetails,
+                                        )}
+                                    >
+                                        <strong
+                                            style={detailStyle(showTemplate)}
+                                        >
+                                            Invoice Date:
+                                        </strong>{" "}
+                                        <span style={detailStyle(showDetails)}>
+                                            {invoice.created_at.split("T")[0] ||
+                                                "___________________________"}
+                                        </span>
                                     </p>
                                 </div>
                             </div>
@@ -187,41 +215,95 @@ export default function InvoicePrint({
                             {/* INVOICE TO / FROM */}
                             <div className="border-2 border-gray-400 flex mb-3 text-xs">
                                 <div className="w-1/2 p-3 border-r-2 border-gray-400">
-                                    <p className="font-semibold mb-2">
+                                    <p
+                                        className="font-semibold mb-2"
+                                        style={detailStyle(showTemplate)}
+                                    >
                                         Invoice To:
                                     </p>
-                                    <p>
-                                        Client Name:{" "}
-                                        {invoice.customer_name ||
-                                            "__________________________"}
+                                    <p
+                                        style={detailStyle(
+                                            showTemplate || showDetails,
+                                        )}
+                                    >
+                                        <span style={detailStyle(showTemplate)}>
+                                            Client Name:
+                                        </span>{" "}
+                                        <span style={detailStyle(showDetails)}>
+                                            {invoice.customer_name ||
+                                                "__________________________"}
+                                        </span>
                                     </p>
-                                    <p>
-                                        Company:{" "}
-                                        {invoice.company ||
-                                            "_____________________________"}
+                                    <p
+                                        style={detailStyle(
+                                            showTemplate || showDetails,
+                                        )}
+                                    >
+                                        <span style={detailStyle(showTemplate)}>
+                                            Company:
+                                        </span>{" "}
+                                        <span style={detailStyle(showDetails)}>
+                                            {invoice.company ||
+                                                "_____________________________"}
+                                        </span>
                                     </p>
-                                    <p>
-                                        Phone No:{" "}
-                                        {invoice.customer_contact ||
-                                            "____________________________"}
+                                    <p
+                                        style={detailStyle(
+                                            showTemplate || showDetails,
+                                        )}
+                                    >
+                                        <span style={detailStyle(showTemplate)}>
+                                            Phone No:
+                                        </span>{" "}
+                                        <span style={detailStyle(showDetails)}>
+                                            {invoice.customer_contact ||
+                                                "____________________________"}
+                                        </span>
                                     </p>
-                                    <p>
-                                        Email:{" "}
-                                        {invoice.customer_email ||
-                                            "_______________________________"}
+                                    <p
+                                        style={detailStyle(
+                                            showTemplate || showDetails,
+                                        )}
+                                    >
+                                        <span style={detailStyle(showTemplate)}>
+                                            Email:
+                                        </span>{" "}
+                                        <span style={detailStyle(showDetails)}>
+                                            {invoice.customer_email ||
+                                                "_______________________________"}
+                                        </span>
                                     </p>
-                                    <p>
-                                        Address:{" "}
-                                        {invoice.customer_address ||
-                                            "_____________________________"}
+                                    <p
+                                        style={detailStyle(
+                                            showTemplate || showDetails,
+                                        )}
+                                    >
+                                        <span style={detailStyle(showTemplate)}>
+                                            Address:
+                                        </span>{" "}
+                                        <span style={detailStyle(showDetails)}>
+                                            {invoice.customer_address ||
+                                                "_____________________________"}
+                                        </span>
                                     </p>
-                                    <p>
-                                        VAT No:{" "}
-                                        {invoice.customer_vat_number ||
-                                            "__________________________"}
+                                    <p
+                                        style={detailStyle(
+                                            showTemplate || showDetails,
+                                        )}
+                                    >
+                                        <span style={detailStyle(showTemplate)}>
+                                            VAT No:
+                                        </span>{" "}
+                                        <span style={detailStyle(showDetails)}>
+                                            {invoice.customer_vat_number ||
+                                                "__________________________"}
+                                        </span>
                                     </p>
                                 </div>
-                                <div className="w-1/2 p-3">
+                                <div
+                                    className="w-1/2 p-3"
+                                    style={detailStyle(showTemplate)}
+                                >
                                     <p className="font-semibold mb-2">
                                         Invoice From:
                                     </p>
@@ -237,8 +319,11 @@ export default function InvoicePrint({
                             </div>
 
                             {/* ITEMS TABLE */}
-                            <table className="w-full border-collapse text-xs mb-4">
-                                <thead>
+                            <table
+                                className="w-full border-collapse text-xs mb-4"
+                                style={detailStyle(showTemplate || showDetails)}
+                            >
+                                <thead style={detailStyle(showTemplate)}>
                                     <tr className="bg-pink-100 border border-gray-400 text-[12px]">
                                         <th className="border border-gray-400 p-1 text-left w-[20%]">
                                             ITEM CODE
@@ -262,7 +347,6 @@ export default function InvoicePrint({
                                         const minRows = 5;
                                         const rows = [];
 
-                                        // Add actual items for this page
                                         pageItems.forEach((item, i) => {
                                             const price = convertPrice(
                                                 item.salePrice,
@@ -273,28 +357,86 @@ export default function InvoicePrint({
                                             );
                                             rows.push(
                                                 <tr key={i}>
-                                                    <td className="border border-gray-300 p-1">
-                                                        {item.productCode ||
-                                                            "-"}
+                                                    <td
+                                                        className="border border-gray-300 p-1"
+                                                        style={detailStyle(
+                                                            showTemplate,
+                                                        )}
+                                                    >
+                                                        <span
+                                                            style={detailStyle(
+                                                                showDetails,
+                                                            )}
+                                                        >
+                                                            {item.productCode ||
+                                                                "-"}
+                                                        </span>
                                                     </td>
-                                                    <td className="border border-gray-300 p-1">
-                                                        {item.productName ||
-                                                            "-"}
+                                                    <td
+                                                        className="border border-gray-300 p-1"
+                                                        style={detailStyle(
+                                                            showTemplate,
+                                                        )}
+                                                    >
+                                                        <span
+                                                            style={detailStyle(
+                                                                showDetails,
+                                                            )}
+                                                        >
+                                                            {item.productName ||
+                                                                "-"}
+                                                        </span>
                                                     </td>
-                                                    <td className="border border-gray-300 p-1 text-right">
-                                                        {formatCurrency(price)}
+                                                    <td
+                                                        className="border border-gray-300 p-1 text-right"
+                                                        style={detailStyle(
+                                                            showTemplate,
+                                                        )}
+                                                    >
+                                                        <span
+                                                            style={detailStyle(
+                                                                showDetails,
+                                                            )}
+                                                        >
+                                                            {formatCurrency(
+                                                                price,
+                                                            )}
+                                                        </span>
                                                     </td>
-                                                    <td className="border border-gray-300 p-1 text-center">
-                                                        {qty}
+                                                    <td
+                                                        className="border border-gray-300 p-1 text-center"
+                                                        style={detailStyle(
+                                                            showTemplate,
+                                                        )}
+                                                    >
+                                                        <span
+                                                            style={detailStyle(
+                                                                showDetails,
+                                                            )}
+                                                        >
+                                                            {qty}
+                                                        </span>
                                                     </td>
-                                                    <td className="border border-gray-300 p-1 text-right">
-                                                        {formatCurrency(total)}
+                                                    <td
+                                                        className="border border-gray-300 p-1 text-right"
+                                                        style={detailStyle(
+                                                            showTemplate,
+                                                        )}
+                                                    >
+                                                        <span
+                                                            style={detailStyle(
+                                                                showDetails,
+                                                            )}
+                                                        >
+                                                            {formatCurrency(
+                                                                total,
+                                                            )}
+                                                        </span>
                                                     </td>
                                                 </tr>,
                                             );
                                         });
 
-                                        // Add empty rows to reach minimum 5 rows
                                         for (
                                             let i = pageItems.length;
                                             i < minRows;
@@ -324,7 +466,6 @@ export default function InvoicePrint({
                                         return rows;
                                     })()}
 
-                                    {/* TOTALS ROWS - Only on last page */}
                                     {pageIndex === itemChunks.length - 1 && (
                                         <>
                                             <tr>
@@ -335,15 +476,29 @@ export default function InvoicePrint({
                                                 <td
                                                     className="border border-gray-300 p-1 font-medium text-left"
                                                     colSpan={2}
+                                                    style={detailStyle(
+                                                        showTemplate,
+                                                    )}
                                                 >
                                                     GOODS VALUE
                                                 </td>
-                                                <td className="border border-gray-300 p-1 text-right">
-                                                    {formatCurrency(
-                                                        convertPrice(
-                                                            goodsValue,
-                                                        ),
+                                                <td
+                                                    className="border border-gray-300 p-1 text-right"
+                                                    style={detailStyle(
+                                                        showTemplate,
                                                     )}
+                                                >
+                                                    <span
+                                                        style={detailStyle(
+                                                            showDetails,
+                                                        )}
+                                                    >
+                                                        {formatCurrency(
+                                                            convertPrice(
+                                                                goodsValue,
+                                                            ),
+                                                        )}
+                                                    </span>
                                                 </td>
                                             </tr>
 
@@ -355,6 +510,9 @@ export default function InvoicePrint({
                                                 <td
                                                     className="border border-gray-300 p-1 font-medium text-left"
                                                     colSpan={2}
+                                                    style={detailStyle(
+                                                        showTemplate,
+                                                    )}
                                                 >
                                                     DISCOUNT
                                                     {invoice.discount_category_name && (
@@ -368,13 +526,24 @@ export default function InvoicePrint({
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="border border-gray-300 p-1 text-right">
-                                                    -{" "}
-                                                    {formatCurrency(
-                                                        convertPrice(
-                                                            discountValue,
-                                                        ),
+                                                <td
+                                                    className="border border-gray-300 p-1 text-right"
+                                                    style={detailStyle(
+                                                        showTemplate,
                                                     )}
+                                                >
+                                                    <span
+                                                        style={detailStyle(
+                                                            showDetails,
+                                                        )}
+                                                    >
+                                                        -{" "}
+                                                        {formatCurrency(
+                                                            convertPrice(
+                                                                discountValue,
+                                                            ),
+                                                        )}
+                                                    </span>
                                                 </td>
                                             </tr>
 
@@ -386,15 +555,29 @@ export default function InvoicePrint({
                                                 <td
                                                     className="border border-gray-300 p-1 font-medium text-left"
                                                     colSpan={2}
+                                                    style={detailStyle(
+                                                        showTemplate,
+                                                    )}
                                                 >
                                                     TOTAL
                                                 </td>
-                                                <td className="border border-gray-300 p-1 text-right">
-                                                    {formatCurrency(
-                                                        convertPrice(
-                                                            totalAfterDiscount,
-                                                        ),
+                                                <td
+                                                    className="border border-gray-300 p-1 text-right"
+                                                    style={detailStyle(
+                                                        showTemplate,
                                                     )}
+                                                >
+                                                    <span
+                                                        style={detailStyle(
+                                                            showDetails,
+                                                        )}
+                                                    >
+                                                        {formatCurrency(
+                                                            convertPrice(
+                                                                totalAfterDiscount,
+                                                            ),
+                                                        )}
+                                                    </span>
                                                 </td>
                                             </tr>
 
@@ -406,13 +589,29 @@ export default function InvoicePrint({
                                                 <td
                                                     className="border border-gray-300 p-1 font-medium text-left"
                                                     colSpan={2}
+                                                    style={detailStyle(
+                                                        showTemplate,
+                                                    )}
                                                 >
                                                     VAT 18%
                                                 </td>
-                                                <td className="border border-gray-300 p-1 text-right">
-                                                    {formatCurrency(
-                                                        convertPrice(vatAmount),
+                                                <td
+                                                    className="border border-gray-300 p-1 text-right"
+                                                    style={detailStyle(
+                                                        showTemplate,
                                                     )}
+                                                >
+                                                    <span
+                                                        style={detailStyle(
+                                                            showDetails,
+                                                        )}
+                                                    >
+                                                        {formatCurrency(
+                                                            convertPrice(
+                                                                vatAmount,
+                                                            ),
+                                                        )}
+                                                    </span>
                                                 </td>
                                             </tr>
 
@@ -424,15 +623,29 @@ export default function InvoicePrint({
                                                 <td
                                                     className="border border-gray-300 bg-pink-100 p-1 text-left"
                                                     colSpan={2}
+                                                    style={detailStyle(
+                                                        showTemplate,
+                                                    )}
                                                 >
                                                     GRAND TOTAL
                                                 </td>
-                                                <td className="border border-gray-300 bg-pink-100 p-1 text-right">
-                                                    {formatCurrency(
-                                                        convertPrice(
-                                                            grandTotal,
-                                                        ),
+                                                <td
+                                                    className="border border-gray-300 bg-pink-100 p-1 text-right"
+                                                    style={detailStyle(
+                                                        showTemplate,
                                                     )}
+                                                >
+                                                    <span
+                                                        style={detailStyle(
+                                                            showDetails,
+                                                        )}
+                                                    >
+                                                        {formatCurrency(
+                                                            convertPrice(
+                                                                grandTotal,
+                                                            ),
+                                                        )}
+                                                    </span>
                                                 </td>
                                             </tr>
                                         </>
@@ -440,9 +653,11 @@ export default function InvoicePrint({
                                 </tbody>
                             </table>
 
-                            {/* NOTE - Only on last page */}
                             {pageIndex === itemChunks.length - 1 && (
-                                <div className="border-t border-gray-300 pt-2 mt-2">
+                                <div
+                                    className="border-t border-gray-300 pt-2 mt-2"
+                                    style={detailStyle(showTemplate)}
+                                >
                                     <p className="text-center text-xs italic">
                                         NOTE: All Cheques to be drawn in favour
                                         of <b>Namaratne Motor Distributors</b>{" "}
@@ -451,9 +666,11 @@ export default function InvoicePrint({
                                 </div>
                             )}
 
-                            {/* SIGNATURES - Only on last page */}
                             {pageIndex === itemChunks.length - 1 && (
-                                <div className="flex justify-between mt-10 text-xs">
+                                <div
+                                    className="flex justify-between mt-10 text-xs"
+                                    style={detailStyle(showTemplate)}
+                                >
                                     <div className="text-center">
                                         <div className="mb-2">
                                             ...........................................................

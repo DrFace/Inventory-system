@@ -184,10 +184,42 @@ export default function InvoiceView() {
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
-                            className="px-3 py-1.5 rounded border text-sm"
+                            className="px-3 py-1.5 rounded border text-sm bg-gray-50 hover:bg-gray-100"
                             onClick={() => window.print()}
                         >
-                            Print
+                            Print Full
+                        </button>
+
+                        <button
+                            type="button"
+                            className="px-3 py-1.5 rounded border text-sm bg-blue-50 hover:bg-blue-100 text-blue-700"
+                            onClick={() => {
+                                window.open(
+                                    route("billing.invoice", {
+                                        id: invoice.id,
+                                        mode: "template",
+                                    }),
+                                    "_blank",
+                                );
+                            }}
+                        >
+                            Print Template
+                        </button>
+
+                        <button
+                            type="button"
+                            className="px-3 py-1.5 rounded border text-sm bg-green-50 hover:bg-green-100 text-green-700"
+                            onClick={() => {
+                                window.open(
+                                    route("billing.invoice", {
+                                        id: invoice.id,
+                                        mode: "details",
+                                    }),
+                                    "_blank",
+                                );
+                            }}
+                        >
+                            Print Details
                         </button>
 
                         <button
