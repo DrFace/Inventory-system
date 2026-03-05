@@ -179,6 +179,91 @@ export default function SettingsIndex() {
                   </p>
                 </div>
               </div>
+              
+              {/* Bulk Operations Section */}
+              <div className="mb-6 pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 uppercase tracking-wider">Bulk Data Operations</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Products Bulk Upload */}
+                  <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+                    <h4 className="font-bold text-gray-700 mb-2">Bulk Products Upload</h4>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Upload products in bulk with series numbers and batch details.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                      <button
+                        type="button"
+                        onClick={() => window.open(route("settings.bulk.products.template"), "_blank")}
+                        className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download Product Template
+                      </button>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        className="text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            router.post(route("settings.bulk.products.upload"), formData, {
+                              onSuccess: () => {
+                                toast.success("Products imported successfully!");
+                                e.target.value = "";
+                              },
+                              onError: (errors) => toast.error(errors.file || "Error uploading products")
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Customers Bulk Upload */}
+                  <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+                    <h4 className="font-bold text-gray-700 mb-2">Bulk Customers Upload</h4>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Upload customer database with contact details and credit limits.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                      <button
+                        type="button"
+                        onClick={() => window.open(route("settings.bulk.customers.template"), "_blank")}
+                        className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download Customer Template
+                      </button>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        className="text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            router.post(route("settings.bulk.customers.upload"), formData, {
+                              onSuccess: () => {
+                                toast.success("Customers imported successfully!");
+                                e.target.value = "";
+                              },
+                              onError: (errors) => toast.error(errors.file || "Error uploading customers")
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <div className="flex justify-end">
                 <button
