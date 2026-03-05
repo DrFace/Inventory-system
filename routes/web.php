@@ -12,6 +12,8 @@ use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\InvoiceArchiveController;
+use App\Http\Controllers\BulkDataController;
+
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -73,6 +75,13 @@ Route::middleware('auth')->group(function () {
         // Settings routes
         Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [\App\Http\Controllers\SettingsController::class, 'update'])->name('settings.update');
+
+        // Bulk Operations routes
+        Route::get('/settings/bulk/products/template', [BulkDataController::class, 'downloadProductTemplate'])->name('settings.bulk.products.template');
+        Route::post('/settings/bulk/products/upload', [BulkDataController::class, 'uploadProducts'])->name('settings.bulk.products.upload');
+        Route::get('/settings/bulk/customers/template', [BulkDataController::class, 'downloadCustomerTemplate'])->name('settings.bulk.customers.template');
+        Route::post('/settings/bulk/customers/upload', [BulkDataController::class, 'uploadCustomers'])->name('settings.bulk.customers.upload');
+
         
         // Discount Categories routes
         Route::get('/discount-categories', [\App\Http\Controllers\DiscountCategoryController::class, 'index'])->name('discount-categories.index');
