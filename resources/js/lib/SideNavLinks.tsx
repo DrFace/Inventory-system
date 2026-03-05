@@ -43,6 +43,16 @@ const SideNavLinks: React.FC = () => {
             count: 0,
             disabled: false, // Accessible to all, actions restricted on page
         },
+        {
+            name: "Purchase Orders",
+            link: true,
+            border: false,
+            startWith: "/purchase-orders",
+            route: "purchase-orders.index",
+            icon: "ShoppingCartIcon",
+            count: 0,
+            disabled: false, // Accessible to all
+        },
 
         {
             name: "Reports",

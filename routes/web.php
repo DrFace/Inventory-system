@@ -8,11 +8,14 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\InvoiceArchiveController;
 use App\Http\Controllers\BulkDataController;
+use App\Http\Controllers\PurchaseOrderController;
+
 
 
 Route::get('/', function () {
@@ -96,8 +99,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/billing/view/{id}', [BillingController::class, 'invoiceView']);
 
 
+    // Purchase Order routes
+    Route::resource('purchase-orders', PurchaseOrderController::class);
+    Route::get('purchase-orders/{id}/download', [PurchaseOrderController::class, 'downloadPdf'])->name('purchase-orders.download');
+
+    // Supplier routes
+    Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+
     // API route for getting user permissions
     Route::get('/api/user/permissions', [PermissionController::class, 'getUserPermissions']);
 });
+
 
 require __DIR__ . '/auth.php';

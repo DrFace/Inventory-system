@@ -16,10 +16,12 @@ class CustomerTemplateExport implements WithHeadings, ShouldAutoSize
             'Name',
             'Contact Number',
             'Email',
+            'VAT Number',
             'Address',
             'Credit Limit',
+            'Discount Category',
             'Credit Period (days, e.g. 30)',
-            'Status (active/inactive)',
+            'Status (active/Inactive)',
         ];
     }
 }

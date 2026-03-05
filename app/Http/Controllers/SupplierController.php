@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Supplier;
 
 class SupplierController extends Controller
 {
@@ -27,7 +28,23 @@ class SupplierController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'supplierName' => 'required|string|max:255',
+            'companyName' => 'nullable|string|max:255',
+            'supplierAddress' => 'nullable|string',
+            'supplierPhone' => 'nullable|string|max:50',
+            'supplierEmail' => 'nullable|email|max:255',
+        ]);
+
+        $validated['status'] = 'approved';
+        $validated['availibility'] = 'active';
+
+        $supplier = Supplier::create($validated);
+
+        return response()->json([
+            'message' => 'Supplier created successfully',
+            'supplier' => $supplier
+        ]);
     }
 
     /**

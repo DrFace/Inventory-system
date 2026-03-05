@@ -19,14 +19,13 @@ class ProductTemplateExport implements WithHeadings, ShouldAutoSize
             'Buying Price',
             'Selling Price',
             'Tax',
-            'Discount',
+            'Vehicle Type',
+            'Profit Margin',
             'Quantity',
             'Unit',
             'Brand',
             'Low Stock Alert',
             'Batch Number',
-            'Series Number (comma separated)',
-            'Expiry Date (YYYY-MM-DD)',
             'Purchase Date (YYYY-MM-DD)',
         ];
     }

@@ -21,6 +21,15 @@ class ProductImport implements ToModel, WithHeadingRow
             return null;
         }
 
+        $seriasId = null;
+        if (!empty($row['vehicle_type'])) {
+            $serias = SeriasNumber::firstOrCreate(
+                ['seriasNo' => trim($row['vehicle_type'])],
+                ['status' => 'approved']
+            );
+            $seriasId = $serias->id;
+        }
+
         $product = new Product([
             'productName'        => $row['product_name'],
             'productCode'        => $row['product_code'],
@@ -28,47 +37,32 @@ class ProductImport implements ToModel, WithHeadingRow
             'buyingPrice'        => $row['buying_price'],
             'sellingPrice'       => $row['selling_price'],
             'tax'                => $row['tax'],
-            'discount'           => $row['discount'],
+            'seriasId'           => $seriasId,
             'quantity'           => $row['quantity'],
             'unit'               => $row['unit'],
             'brand'              => $row['brand'],
             'lowStock'           => $row['low_stock_alert'],
             'batchNumber'        => $row['batch_number'],
-            'expiryDate'         => $row['expiry_date_yyyy_mm_dd'],
             'purchaseDate'       => $row['purchase_date_yyyy_mm_dd'],
             'createdBy'          => Auth::id(),
             'status'             => 'approved',
             'availability'       => 'instock',
         ]);
 
-        // Calculate profit margin
+        // Profit margin: Use the value from the file if provided, otherwise compute it
         $buyingPrice = (float) $row['buying_price'];
         $sellingPrice = (float) $row['selling_price'];
-        if ($buyingPrice > 0) {
+        
+        if (isset($row['profit_margin']) && $row['profit_margin'] !== '' && $row['profit_margin'] !== null) {
+            $product->profitMargin = (float) $row['profit_margin'];
+        } elseif ($buyingPrice > 0) {
             $product->profitMargin = (($sellingPrice - $buyingPrice) / $buyingPrice) * 100;
         }
 
         $product->save();
 
         // Handle Series Numbers
-        if (!empty($row['series_number_comma_separated'])) {
-            $seriesNumbers = explode(',', $row['series_number_comma_separated']);
-            foreach ($seriesNumbers as $sNo) {
-                $sNo = trim($sNo);
-                if (!empty($sNo)) {
-                    SeriasNumber::create([
-                        'seriasNo' => $sNo,
-                        'status'   => 'approved',
-                    ]);
-                    // Note: The product table has a seriasId, but usually series are 1-to-many.
-                    // The schema suggests Product has seriasId. If one product can have multiple series,
-                    // we might need to link them properly. For now, following the schema's seriasId.
-                    // If multiple series are provided, the last one's ID might be linked if we stick to the column.
-                    // However, often series numbers are individual items.
-                    // Let's assume the user wants to log these series numbers.
-                }
-            }
-        }
+        // Series numbers have been omitted from the template, so we don't handle them for now
 
         return $product;
     }

@@ -16,6 +16,7 @@ class Product extends Model
         'productImage',
         'buyingPrice',
         'tax',
+        'vehicleType',
         'discount',
         'quantity',
         'unit',
