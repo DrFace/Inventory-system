@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { usePage } from "@inertiajs/react";
+import { usePage, router } from "@inertiajs/react";
 import Authenticated from "@/Layouts/AuthenticatedLayout";
 import MasterTable, {
     TableBody,
@@ -21,6 +21,7 @@ export default function ProductsIndexPage() {
         seriasList,
         permissions,
         isAdmin,
+        filters: initialFilters,
     } = usePage().props as any;
 
     // ✅ ADDED (only helper)
@@ -86,17 +87,59 @@ export default function ProductsIndexPage() {
         { label: "Buying Price", sortField: "buyingPrice", sortable: true },
         { label: "Selling Price", sortField: "sellingPrice", sortable: true },
         { label: "Quantity", sortField: "quantity", sortable: true },
-        { label: "Purchase Date", sortField: "purchaseDate", sortable: true },
         { label: "Availability", sortField: "availability", sortable: true },
     ];
 
-    const filters = {};
+    const filters = {
+        ...initialFilters,
+        sortBy: initialFilters?.sortBy === "name" || !initialFilters?.sortBy ? "productName" : initialFilters.sortBy,
+        seriasId: initialFilters?.seriasId ?? "all",
+    };
+
+    const handleSeriesChange = (e: any) => {
+        const val = e.target.value;
+        router.get(route("products.index"), {
+            ...filters,
+            seriasId: val,
+            page: 1,
+        }, {
+            preserveState: false,
+            replace: true,
+        });
+    };
+
+    const handleClearAll = () => {
+        // MasterTable will handle its own state reset and reload the page with empty query
+    };
     const createLink = undefined;
 
     // Permission checks
     const canAddStock = hasPermission("restock_products");
     const canAddProduct = hasPermission("add_products");
     const canAddSeries = hasPermission("add_series");
+
+    // Group products by productCode and productName while preserving order
+    const keysOrder: string[] = [];
+    const groupedProducts = products.data.reduce((acc: any, product: any) => {
+        const key = `${product.productCode}-${product.productName}`;
+        if (!acc[key]) {
+            keysOrder.push(key);
+            acc[key] = {
+                ...product,
+                batches: [],
+                totalQuantity: 0,
+                buyingPrices: new Set<string>(),
+                sellingPrices: new Set<string>(),
+            };
+        }
+        acc[key].batches.push(product);
+        acc[key].totalQuantity += Number(product.quantity) || 0;
+        if (product.buyingPrice) acc[key].buyingPrices.add(String(product.buyingPrice));
+        if (product.sellingPrice) acc[key].sellingPrices.add(String(product.sellingPrice));
+        return acc;
+    }, {});
+
+    const groupedList: any[] = keysOrder.map(key => groupedProducts[key]);
 
     return (
         <Authenticated bRoutes={undefined}>
@@ -188,72 +231,122 @@ export default function ProductsIndexPage() {
                     url={route("products.index")}
                     createLink={createLink}
                     links={products.meta?.links}
+                    hideDateRange={true}
+                    search={{
+                        placeholder: "Search by name or part number...",
+                        status: "active",
+                    }}
+                    extraFilters={
+                        <select
+                            value={filters.seriasId}
+                            onChange={handleSeriesChange}
+                            className="block w-full border-gray-300 rounded-2xl text-sm focus:ring-primary focus:border-primary mt-2 h-[42px] min-w-[200px]"
+                        >
+                            <option value="all">All Vehicle Parts</option>
+                            {seriasList.map((s: any) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.seriasNo}
+                                </option>
+                            ))}
+                        </select>
+                    }
+                    onClearAll={handleClearAll}
                 >
-                    {products.data.map((product: any) => (
+                    {groupedList.map((product: any) => (
                         <TableBody
                             key={product.id}
                             id={product.id}
-                            buttons={
-                                <>
-                                    <button
-                                        onClick={() => {
-                                            if (
-                                                hasPermission("edit_products")
-                                            ) {
-                                                setSelectedProduct(product);
-                                                setIsEditModalOpen(true);
-                                            }
-                                        }}
-                                        disabled={
-                                            !hasPermission("edit_products")
-                                        }
-                                        className={`flex items-center gap-1 px-3 py-2 text-sm rounded ${
-                                            hasPermission("edit_products")
-                                                ? "bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
-                                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                        }`}
-                                    >
-                                        <PencilIcon className="w-3 h-3" /> Edit
-                                    </button>
-                                    <ConfirmButton
-                                        className="!py-2"
-                                        url={`/products/${product.id}`}
-                                        label="Delete"
-                                        disabled={
-                                            !hasPermission("delete_products")
-                                        }
-                                    />
-                                </>
+                            expandedContent={
+                                <div className="p-4 bg-gray-50 border rounded-lg w-full my-2">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-bold text-sm text-gray-700">Batches for {product.productName} ({product.productCode})</h4>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    if (hasPermission("edit_products")) {
+                                                        setSelectedProduct(product);
+                                                        setIsEditModalOpen(true);
+                                                    }
+                                                }}
+                                                disabled={!hasPermission("edit_products")}
+                                                className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded ${
+                                                    hasPermission("edit_products")
+                                                        ? "bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
+                                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                }`}
+                                            >
+                                                <PencilIcon className="w-3 h-3" /> Edit Product
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <table className="w-full text-sm text-left border bg-white shadow-sm rounded">
+                                        <thead className="bg-gray-100 uppercase text-xs text-gray-600">
+                                            <tr>
+                                                <th className="px-4 py-2 border">Batch No/ID</th>
+                                                <th className="px-4 py-2 border">Buying Price</th>
+                                                <th className="px-4 py-2 border">Selling Price</th>
+                                                <th className="px-4 py-2 border">Quantity</th>
+                                                <th className="px-4 py-2 border">Purchase Date</th>
+                                                <th className="px-4 py-2 border text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {product.batches.map((batch: any) => (
+                                                <tr key={batch.id} className="border-b hover:bg-gray-50">
+                                                    <td className="px-4 py-2 border">{batch.batchNumber || batch.id}</td>
+                                                    <td className="px-4 py-2 border">{batch.buyingPrice ? `LKR ${batch.buyingPrice}` : "-"}</td>
+                                                    <td className="px-4 py-2 border">{batch.sellingPrice ? `LKR ${batch.sellingPrice}` : "-"}</td>
+                                                    <td className="px-4 py-2 border">
+                                                        <span className={`font-semibold ${batch.quantity > 0 ? "text-green-600" : "text-red-500"}`}>
+                                                            {batch.quantity}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2 border">{formatDate(batch.purchaseDate)}</td>
+                                                    <td className="px-4 py-2 border text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <ConfirmButton
+                                                                className="!py-1 !px-2 !text-xs"
+                                                                url={`/inventory/${batch.id}`}
+                                                                label="Delete"
+                                                                disabled={!hasPermission("delete_products")}
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             }
                         >
                             <TableTd>{product.id}</TableTd>
                             <TableTd>{product.productName}</TableTd>
-
-                            {/* ✅ NEW */}
                             <TableTd>{product.productCode ?? "-"}</TableTd>
-                            <TableTd>
-                                {product.productDescription ?? "-"}
-                            </TableTd>
+                            <TableTd>{product.productDescription ?? "-"}</TableTd>
 
                             <TableTd>
                                 {seriasList.find(
                                     (s: any) => s.id === product.seriasId,
                                 )?.seriasNo ?? "-"}
                             </TableTd>
-                            <TableTd>LKR {product.buyingPrice ?? "-"}</TableTd>
-                            <TableTd>LKR {product.sellingPrice ?? "-"}</TableTd>
-                            <TableTd>{product.quantity}</TableTd>
-
-                            {/* ✅ CHANGED ONLY THIS (humanize purchaseDate) */}
                             <TableTd>
-                                {formatDate(product.purchaseDate)}
+                                {product.buyingPrices.size > 0 
+                                    ? Array.from(product.buyingPrices).map(p => `LKR ${p}`).join(", ") 
+                                    : "-"}
                             </TableTd>
+                            <TableTd>
+                                {product.sellingPrices.size > 0 
+                                    ? Array.from(product.sellingPrices).map(p => `LKR ${p}`).join(", ") 
+                                    : "-"}
+                            </TableTd>
+                            <TableTd>{product.totalQuantity}</TableTd>
 
                             <TableTd>
                                 <div
-                                    className={`font-semibold ${product.quantity > 0 ? "text-green-500" : "text-red-500"}`}
+                                    className={`font-semibold ${product.totalQuantity > 0 ? "text-green-500" : "text-red-500"}`}
                                 >
-                                    {product.quantity > 0
+                                    {product.totalQuantity > 0
                                         ? "In-stock"
                                         : "Out of stock"}
                                 </div>
