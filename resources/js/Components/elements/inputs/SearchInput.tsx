@@ -14,11 +14,13 @@ export default forwardRef(function SearchInput(
         isFocused = false,
         resetSearch,
         searchLoader,
+        onSearch,
         ...props
     }: InputHTMLAttributes<HTMLInputElement> & {
         isFocused?: boolean;
         resetSearch: any;
         searchLoader: boolean;
+        onSearch?: (value: string) => void;
     },
     ref
 ) {
@@ -61,6 +63,19 @@ export default forwardRef(function SearchInput(
                     className="focus:ring-primary block w-full rounded-none rounded-l-2xl border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6"
                 />
             </div>
+            
+            <button
+                type="button"
+                className="relative -ml-px inline-flex items-center gap-x-1.5 px-4 py-2 text-sm font-bold text-white bg-blue-600 ring-1 ring-inset ring-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                onClick={() => {
+                    if (onSearch && localRef.current) {
+                        onSearch(localRef.current.value);
+                    }
+                }}
+            >
+                Search
+            </button>
+
             <button
                 type="button"
                 onClick={handleResetSearch}
@@ -75,7 +90,6 @@ export default forwardRef(function SearchInput(
                 {searchLoader && (
                     <div className="w-5 h-5 ease-linear border-2 border-t-4 border-gray-400 rounded-full loader animate-spin" />
                 )}
-                {/* <span>{searchLoader ? "Loading..." : "Clear"}</span> */}
             </button>
         </div>
     );
