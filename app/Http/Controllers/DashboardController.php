@@ -197,7 +197,7 @@ class DashboardController extends Controller
             ->whereColumn('quantity', '<=', 'lowStock')
             ->where('quantity', '>', 0)
             ->whereNotNull('lowStock')
-            ->select('id', 'productName', 'productCode', 'quantity', 'lowStock', 'batchNumber', 'buyingPrice', 'sellingPrice', 'seriasId')
+            ->select('id', 'productName', 'productCode', 'quantity', 'lowStock', 'batchNumber', 'buyingPrice', 'sellingPrice', 'seriasId', 'vehicleType')
             ->orderBy('quantity')
             ->limit(10)
             ->get()
@@ -211,6 +211,7 @@ class DashboardController extends Controller
                     'batchNumber' => $product->batchNumber,
                     'buyingPrice' => $product->buyingPrice,
                     'sellingPrice' => $product->sellingPrice,
+                    'vehicleType' => $product->vehicleType ?: ($product->serias->seriasNo ?? 'N/A'),
                     'series' => $product->serias->seriasNo ?? 'N/A',
                 ];
             })
@@ -222,7 +223,7 @@ class DashboardController extends Controller
                 $query->where('quantity', 0)
                     ->orWhereNull('quantity');
             })
-            ->select('id', 'productName', 'productCode', 'batchNumber', 'buyingPrice', 'sellingPrice', 'updated_at', 'seriasId')
+            ->select('id', 'productName', 'productCode', 'batchNumber', 'buyingPrice', 'sellingPrice', 'updated_at', 'seriasId', 'vehicleType')
             ->orderBy('updated_at', 'desc')
             ->limit(10)
             ->get()
@@ -235,6 +236,7 @@ class DashboardController extends Controller
                     'buyingPrice' => $product->buyingPrice,
                     'sellingPrice' => $product->sellingPrice,
                     'updated_at' => $product->updated_at,
+                    'vehicleType' => $product->vehicleType ?: ($product->serias->seriasNo ?? 'N/A'),
                     'series' => $product->serias->seriasNo ?? 'N/A',
                 ];
             })

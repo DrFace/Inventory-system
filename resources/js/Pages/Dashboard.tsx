@@ -76,6 +76,7 @@ interface DashboardProps {
             buyingPrice: number;
             sellingPrice: number;
             series: string;
+            vehicleType: string;
         }>;
         outOfStockItems: Array<{
             id: number;
@@ -86,6 +87,7 @@ interface DashboardProps {
             sellingPrice: number;
             updated_at: string;
             series: string;
+            vehicleType: string;
         }>;
         recentTransactions: Array<{
             id: number;
@@ -516,7 +518,7 @@ export default function Dashboard() {
                                                                 "_"}
                                                         </td>
                                                         <td className="py-2 px-2 text-gray-600">
-                                                            {item.series || "_"}
+                                                            {item.vehicleType || "_"}
                                                         </td>
                                                         <td className="py-2 px-2 text-center">
                                                             <span className="text-orange-600 font-semibold">
@@ -597,7 +599,7 @@ export default function Dashboard() {
                                                                 "_"}
                                                         </td>
                                                         <td className="py-2 px-2 text-gray-600">
-                                                            {item.series || "_"}
+                                                            {item.vehicleType || "_"}
                                                         </td>
                                                         <td className="py-2 px-2 text-gray-600">
                                                             {item.batchNumber ||

@@ -4,7 +4,7 @@ import {
     ChevronUpIcon,
     PlusIcon,
 } from "@heroicons/react/20/solid";
-import { router } from "@inertiajs/react";
+import { router, useForm } from "@inertiajs/react";
 import { useEffect, useRef, useState } from "react";
 import { PrimaryLink } from "../buttons/PrimaryButton";
 import { Disclosure } from "@headlessui/react";
@@ -13,18 +13,19 @@ import SearchInput from "../inputs/SearchInput";
 import Pagination from "../../shared/Pagination";
 import { SecondaryLink } from "../buttons/SecondaryButton";
 import { Link, redirect } from "react-router-dom";
-import { addYears, format } from "date-fns";
-import "react-date-range/dist/styles.css"; // main style file
-import "react-date-range/dist/theme/default.css";
+import useStateRef from "react-usestateref";
+import { useDebouncedCallback } from "use-debounce";
 
 export function TableBody({
     id,
     children,
     buttons,
+    expandedContent,
 }: {
     id: any;
-    children: any;
-    buttons: any;
+    children: React.ReactNode;
+    buttons?: React.ReactNode;
+    expandedContent?: React.ReactNode;
 }) {
     return (
         <Disclosure as="tbody" className="w-full bg-white " key={id}>
@@ -56,9 +57,13 @@ export function TableBody({
                             colSpan={100}
                             className="py-4 pl-4 pr-3 whitespace-nowrap bg-gray-50 sm:pl-6 "
                         >
-                            <span className="flex items-center space-x-4">
-                                {buttons}
-                            </span>
+                            {expandedContent ? (
+                                expandedContent
+                            ) : (
+                                <span className="flex items-center space-x-4">
+                                    {buttons}
+                                </span>
+                            )}
                         </Disclosure.Panel>
                     </tr>
                 </>
@@ -101,6 +106,8 @@ export default function MasterTable({
     children,
     statusFilter,
     hideDateRange = false,
+    extraFilters,
+    onClearAll,
 }: {
     tableColumns: any;
     filters: any;
@@ -130,28 +137,20 @@ export default function MasterTable({
     children: any;
     statusFilter?: any;
     hideDateRange?: boolean;
+    extraFilters?: React.ReactNode;
+    onClearAll?: () => void;
 }) {
     const [searchParam, setSearchParam, searchParamRef] = useStateRef(
         filters.searchParam ?? ""
     );
-    const [page, setPage] = useState(filters.page ?? 1);
-    const [rowPerPage, setRowPerPage] = useState(filters.perPage ?? 10);
-    const [sortBy, setSortBy] = useState(filters.sortBy ?? "name");
-    const [sortDirection, setSortDirection] = useState(filters.sortDirection ?? "desc");
-    const [date, setDate] = useState({
-        startDate: filters.range1 ? new Date(filters.range1) : new Date(),
-        endDate: filters.range2 ? new Date(filters.range2) : new Date(),
-        key: "selection",
-    });
+    const [page, setPage, pageRef] = useStateRef(filters.page ?? 1);
+    const [perPage, setPerPage, perPageRef] = useStateRef(filters.perPage ?? 10);
+    const [sortBy, setSortBy, sortByRef] = useStateRef(filters.sortBy ?? "id");
+    const [sortDirection, setSortDirection, sortDirectionRef] = useStateRef(filters.sortDirection ?? "desc");
     // const [
     const [importMode, setImportMode] = useState(false);
     const [searchLoader, setSearchLoader] = useState(false);
     const [openDate, setOpenDate] = useState(false);
-
-    const [previousDate, setPreviousDate] = useState({
-        startDate: new Date(filters.range1),
-        endDate: new Date(filters.range2),
-    });
 
 
 
@@ -159,41 +158,19 @@ export default function MasterTable({
         router.get(
             url,
             {
-                page: page,
-                rowPerPage: rowPerPage,
-                sortBy: sortBy,
-                sortDirection: sortDirection,
-                // searchParam: searchParam,
+                ...filters,
+                page: pageRef.current,
+                perPage: perPageRef.current,
+                sortBy: sortByRef.current,
+                sortDirection: sortDirectionRef.current,
                 searchParam: searchParamRef.current,
-
-                // status: search?.status ?? statusFilter?.status,
             },
             {
                 replace: true,
-                preserveState: true,
+                preserveState: false,
             }
         );
 
-    }
-
-
-    function revisit() {
-
-        if (previousDate.startDate.getTime() !== date.startDate.getTime() || previousDate.endDate.getTime() !== date.endDate.getTime()) {
-            router.get(
-                url,
-                {
-                    range1: format(date.startDate, "yyyy-MM-dd"),
-                    range2: format(date.endDate, "yyyy-MM-dd"),
-                },
-                {
-                    replace: true,
-                    preserveState: true,
-                    preserveScroll: true,
-                }
-            );
-            setPreviousDate(date);
-        }
     }
 
     const handleOnSort = (column: any, direction: any, e: any) => {
@@ -215,41 +192,21 @@ export default function MasterTable({
         300
     );
 
-    const debouncedHandleDateRange = useDebouncedCallback(
-        // function
-        (ranges) => {
-            setDate(ranges.selection);
-            setPage(1);
-            revisit();
-            setOpenDate(false);
-        },
-
-    );
-
     const resetSearch = (e: any) => {
-        setSearchParam("");
-        setPage(1);
-        revisitPage();
+        window.location.href = url;
     };
 
-    // useEffect(() => {
-    //     revisitPage();
-    // }
-    //     , [page, rowPerPage, sortBy, sortDirection, searchParam]);
-
     useEffect(() => {
-        revisit();
-    }, [date]);
+        setSearchParam(filters.searchParam ?? "");
+        setPage(filters.page ?? 1);
+        setPerPage(filters.perPage ?? 10);
+        setSortBy(filters.sortBy ?? "id");
+        setSortDirection(filters.sortDirection ?? "desc");
+    }, [filters]);
 
-    const resetDateFilters = () => {
-        router.visit(url, {
 
-            method: "get",
-            data: {
-                preserveState: true,
-                preserveScroll: true,
-            },
-        });
+    const handleClearAll = () => {
+        window.location.href = url;
     };
 
 
@@ -303,57 +260,32 @@ export default function MasterTable({
                     <div className="flex flex-col justify-between gap-2 p-4 space-x-2 overflow-hidden bg-white rounded-lg shadow sm:flex-row">
                         <div className="flex flex-col self-center gap-2 lg:flex-row w-2/8">
                             {search && (
-                                <SearchInput
-                                    id="search"
-                                    className="self-center block w-full shadow-card"
-                                    // isFocused
-                                    searchLoader={searchLoader}
-                                    defaultValue={searchParamRef.current}
-                                    placeholder={search.placeholder}
-                                    resetSearch={resetSearch}
-                                    autoComplete="search"
-                                    onChange={(e) =>
-                                        debouncedHandleSearch(e.target.value)
-                                    }
-                                />
-                            )}
-                            {/* Date Range */}
-                            {!hideDateRange && <div className="flex flex-col">
-
-                                <div className="relative flex flex-row w-full mt-2">
-                                    <span
-                                        className="p-2.5   text-xs lg:w-[300px] md:w-[300px] w-full border rounded-none cursor-pointer rounded-l-2xl  border-slate-300 "
-                                        onClick={() => setOpenDate(!openDate)}
-                                    >
-                                        {!filters.range1
-                                            ? <span className="px-2 text-gray-400 ">Select Date Range</span>
-                                            : date.startDate.toDateString() === date.endDate.toDateString() ? (
-                                                format(date?.startDate, "MMM dd, yyyy")
-                                            ) : (
-                                                `${format(date?.startDate, "MMM dd, yyyy")} - ${format(date?.endDate, "MMM dd, yyyy")}`
-                                            )}
-
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={resetDateFilters}
-                                        className="px-2 text-sm transition duration-200 border rounded-none cursor-pointer border-slate-300 rounded-r-2xl"
-                                    >
-                                        <XMarkIcon
-                                            className="w-5 h-5 text-gray-400 "
-                                            aria-hidden="true"
-                                        />
-                                    </button>
-                                </div>
-                                {openDate && (
-                                    <DateRangePicker
-                                        className="absolute top-[12rem] sm:right-[10rem] z-50 dateRange "
-                                        ranges={[date]}
-                                        onChange={(item) => debouncedHandleDateRange(item)}
-                                        maxDate={new Date()}
+                                <div className="flex items-center gap-2">
+                                    <SearchInput
+                                        id="search"
+                                        className="self-center block w-full shadow-card"
+                                        // isFocused
+                                        searchLoader={searchLoader}
+                                        defaultValue={searchParamRef.current}
+                                        placeholder={search.placeholder}
+                                        resetSearch={resetSearch}
+                                        autoComplete="search"
+                                        onChange={(e) =>
+                                            debouncedHandleSearch(e.target.value)
+                                        }
+                                        onSearch={(value) => {
+                                            setSearchParam(value);
+                                            revisitPage();
+                                        }}
                                     />
-                                )}
-                            </div>}
+                                </div>
+                            )}
+                            {extraFilters && (
+                                <div className="flex items-center gap-2">
+                                    {extraFilters}
+                                </div>
+                            )}
+                            {/* Date Range removed */}
                         </div>
                         <div className="flex justify-end space-x-4">
                             {createLink && (
@@ -447,10 +379,7 @@ export default function MasterTable({
     );
 }
 
-import { useForm } from "@inertiajs/react";
-import useStateRef from "react-usestateref";
-import { useDebouncedCallback } from "use-debounce";
-import { DateRangePicker } from "react-date-range";
+
 
 
 export function ImportModal({

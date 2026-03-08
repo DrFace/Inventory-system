@@ -115,12 +115,6 @@ export default function AddStockModal({
     };
 
     const handleClose = () => {
-        // Check if there are any errors
-        if (Object.keys(errors).length > 0) {
-            // Show alert or just return without closing
-            alert("Please fix the errors before closing");
-            return;
-        }
         // Reset form and errors
         setErrors({});
         setForm({
@@ -337,11 +331,17 @@ export default function AddStockModal({
                                 required
                             >
                                 <option value="">Select Product</option>
-                                {productsList.map((product) => (
-                                    <option key={product.id} value={product.id}>
-                                        {product.productCode} - {product.productName}
-                                    </option>
-                                ))}
+                                {productsList
+                                    .filter((product, index, self) => 
+                                        index === self.findIndex((t) => 
+                                            t.productCode === product.productCode && t.productName === product.productName
+                                        )
+                                    )
+                                    .map((product) => (
+                                        <option key={product.id} value={product.id}>
+                                            {product.productCode} - {product.productName}
+                                        </option>
+                                    ))}
                             </select>
                             {errors.productId && (
                                 <p className="text-red-500 text-sm">

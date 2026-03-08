@@ -29,6 +29,9 @@ export default function EditProductModal({
     const [errors, setErrors] = useState<{ [key: string]: string[] }>({});
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    
+    // ✅ NEW: Track selected batches
+    const [selectedBatchIds, setSelectedBatchIds] = useState<number[]>([]);
 
     // ✅ Populate form when modal opens OR product changes
     useEffect(() => {
@@ -51,6 +54,15 @@ export default function EditProductModal({
                 setImagePreview(null);
             }
 
+            // Initialize batch selection
+            if (product.batches && product.batches.length > 0) {
+                setSelectedBatchIds(product.batches.map((b: any) => b.id));
+            } else if (product.id) {
+                setSelectedBatchIds([product.id]);
+            } else {
+                setSelectedBatchIds([]);
+            }
+
             setErrors({});
             setShowSuccess(false);
         }
@@ -65,6 +77,14 @@ export default function EditProductModal({
         const { name, value } = e.target;
         setForm((prev) => ({ ...prev, [name]: value }));
         setErrors((prev) => ({ ...prev, [name]: [] }));
+    };
+
+    const handleBatchToggle = (batchId: number) => {
+        setSelectedBatchIds((prev) =>
+            prev.includes(batchId)
+                ? prev.filter((id) => id !== batchId)
+                : [...prev, batchId]
+        );
     };
 
     // Handle file change with preview
@@ -100,6 +120,11 @@ export default function EditProductModal({
                 if (value !== "" && value !== null) {
                     formData.append(key, value as any);
                 }
+            });
+
+            // Append selected batches arrays
+            selectedBatchIds.forEach((id) => {
+                formData.append("batch_ids[]", id.toString());
             });
 
             await axios.post(`/inventory/${product.id}`, formData, {
@@ -316,6 +341,45 @@ export default function EditProductModal({
                                 </p>
                             )}
                         </div>
+
+                        {/* Batch Selection */}
+                        {product?.batches && product.batches.length > 0 && (
+                            <div className="col-span-2 pt-3 border-t mt-2">
+                                <label className="block text-sm font-medium mb-2">
+                                    Apply Changes to Selected Batches
+                                </label>
+                                <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                                    {product.batches.map((batch: any) => (
+                                        <label
+                                            key={batch.id}
+                                            className="flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedBatchIds.includes(batch.id)}
+                                                onChange={() => handleBatchToggle(batch.id)}
+                                                className="w-4 h-4 text-blue-600 rounded border-gray-300 mr-3"
+                                            />
+                                            <div className="flex-1 text-sm">
+                                                <div className="font-medium text-gray-700">
+                                                    Batch: {batch.batchNumber || batch.id}
+                                                </div>
+                                                <div className="text-gray-500 text-xs flex gap-3 mt-1">
+                                                    <span>Qty: {batch.quantity}</span>
+                                                    <span>Buy: LKR {batch.buyingPrice || "-"}</span>
+                                                    <span>Sell: LKR {batch.sellingPrice || "-"}</span>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                                {errors.batch_ids && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.batch_ids[0]}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-3">

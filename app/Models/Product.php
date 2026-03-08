@@ -63,7 +63,7 @@ class Product extends Model
 
     public function serias()
     {
-        return $this->belongsTo(SeriasNumber::class);
+        return $this->belongsTo(SeriasNumber::class, 'seriasId');
     }
 
 }

@@ -8,40 +8,79 @@ use Inertia\Inertia;
 
 class InventoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Paginate only required columns
-        $products = Product::select([
-            'id',
-            'productName',
-            'productCode',
-            'productDescription', // ✅ FIX
-            'unit',               // ✅ FIX
-            'brand',              // ✅ FIX
-            'seriasId',
-            'lowStock',           // ✅ FIX
-            'productImage',       // ✅ FIX
-            'batchNumber',
-            'buyingPrice',
-            'sellingPrice',
-            'quantity',
-            'purchaseDate',
-            'status',
-        ])->paginate(10)->toArray();
+        $filters = $request->all(['searchParam', 'sortBy', 'sortDirection', 'perPage', 'page', 'seriasId']);
+
+        $query = Product::query()
+            ->leftJoin('serias_numbers', 'products.seriasId', '=', 'serias_numbers.id')
+            ->select([
+                'products.id',
+                'products.productName',
+                'products.productCode',
+                'products.productDescription',
+                'products.unit',
+                'products.brand',
+                'products.seriasId',
+                'products.lowStock',
+                'products.productImage',
+                'products.batchNumber',
+                'products.buyingPrice',
+                'products.sellingPrice',
+                'products.quantity',
+                'products.purchaseDate',
+                'products.status',
+                'serias_numbers.seriasNo as seriasNo',
+            ]);
+
+        // Universal Search
+        if ($request->filled('searchParam')) {
+            $search = $request->input('searchParam');
+            $query->where(function ($q) use ($search) {
+                $q->where('products.productName', 'like', "%{$search}%")
+                    ->orWhere('products.productCode', 'like', "%{$search}%");
+            });
+        }
+
+        // Series Filter
+        if ($request->filled('seriasId') && $request->input('seriasId') !== 'all') {
+            $query->where('products.seriasId', $request->input('seriasId'));
+        }
+
+        // Sorting
+        $sortBy = $request->input('sortBy') ?: 'id';
+        if ($sortBy === 'name') $sortBy = 'productName'; // Mapping default 'name' from MasterTable
+        
+        $sortDirection = strtolower($request->input('sortDirection')) === 'asc' ? 'asc' : 'desc';
+        
+        if ($sortBy === 'seriasNo') {
+            $query->orderBy('serias_numbers.seriasNo', $sortDirection);
+        } else {
+            // Ensure the column exists to avoid SQL errors
+            $allowedColumns = ['id', 'productName', 'productCode', 'productDescription', 'buyingPrice', 'sellingPrice', 'quantity', 'availability', 'purchaseDate'];
+            $orderBy = in_array($sortBy, $allowedColumns) ? $sortBy : 'id';
+            $query->orderBy("products.{$orderBy}", $sortDirection);
+        }
+
+        $perPage = $request->input('perPage') ?: 10;
+        if (!is_numeric($perPage)) $perPage = 10;
+        
+        $products = $query->paginate($perPage)->withQueryString()->toArray();
 
         // Fetch series list
         $seriasList = SeriasNumber::select(['id', 'seriasNo'])->get()->toArray();
 
         // Get user permissions
         $user = auth()->user();
-        $permissions = $user->getPermissions();
-        $isAdmin = $user->isAdmin();
+        $permissions = $user ? $user->getPermissions() : [];
+        $isAdmin = $user ? $user->isAdmin() : false;
 
         return Inertia::render('Inventory/Index', [
-            'products'   => $products,
-            'seriasList' => $seriasList,
+            'products'    => $products,
+            'seriasList'  => $seriasList,
             'permissions' => $permissions,
-            'isAdmin' => $isAdmin,
+            'isAdmin'     => $isAdmin,
+            'filters'     => $filters,
         ]);
     }
 
@@ -189,15 +228,9 @@ class InventoryController extends Controller
         return response()->json(['product' => $product], 200);
     }
 
-    // 🔹 Update existing product
+    // 🔹 Update existing product(s)
     public function update(Request $request, $id)
     {
-        $product = Product::find($id);
-
-        if (!$product) {
-            return response()->json(['message' => 'Product not found'], 404);
-        }
-
         $validated = $request->validate([
             'productCode'        => 'nullable|string|max:255',
             'productDescription' => 'nullable|string|max:1000',
@@ -207,9 +240,13 @@ class InventoryController extends Controller
             'lowStock'           => 'nullable|integer|min:0',
             'productName'        => 'nullable|string|max:255',
             'productImage'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'batch_ids'          => 'nullable|array',
+            'batch_ids.*'        => 'integer|exists:products,id',
         ]);
 
-        // Handle image upload
+        $idsToUpdate = !empty($validated['batch_ids']) ? $validated['batch_ids'] : [$id];
+        
+        // Handle image upload once
         if ($request->hasFile('productImage')) {
             $file     = $request->file('productImage');
             $filename = time() . '_' . $file->getClientOriginalName();
@@ -217,12 +254,24 @@ class InventoryController extends Controller
             $validated['productImage'] = 'assets/' . $filename;
         }
 
-        // Update fields
-        $product->update($validated);
+        // Remove batch_ids from the validated data so it's not passed into the update
+        $updateData = collect($validated)->except('batch_ids')->toArray();
+
+        foreach ($idsToUpdate as $targetId) {
+            $product = Product::find($targetId);
+            if ($product) {
+                // If there's an image upload, delete the old image if it exists
+                if (isset($updateData['productImage']) && $product->productImage && file_exists(public_path($product->productImage))) {
+                    @unlink(public_path($product->productImage));
+                }
+                
+                $product->update($updateData);
+            }
+        }
 
         return response()->json([
-            'message' => 'Product updated successfully',
-            'product' => $product,
+            'message' => 'Products updated successfully',
+            'updated_ids' => $idsToUpdate,
         ], 200);
     }
 
