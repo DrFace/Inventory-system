@@ -14,7 +14,14 @@ class InventoryController extends Controller
         $products = Product::select([
             'id',
             'productName',
+            'productCode',
+            'productDescription', // ✅ FIX
+            'unit',               // ✅ FIX
+            'brand',              // ✅ FIX
             'seriasId',
+            'lowStock',           // ✅ FIX
+            'productImage',       // ✅ FIX
+            'batchNumber',
             'buyingPrice',
             'sellingPrice',
             'quantity',
@@ -25,32 +32,30 @@ class InventoryController extends Controller
         // Fetch series list
         $seriasList = SeriasNumber::select(['id', 'seriasNo'])->get()->toArray();
 
+        // Get user permissions
+        $user = auth()->user();
+        $permissions = $user->getPermissions();
+        $isAdmin = $user->isAdmin();
+
         return Inertia::render('Inventory/Index', [
             'products'   => $products,
             'seriasList' => $seriasList,
+            'permissions' => $permissions,
+            'isAdmin' => $isAdmin,
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'productName'        => 'nullable|string|max:255',
+            'productName'        => 'required|string|max:255',
             'productCode'        => 'required|string|max:255',
             'productImage'       => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
             'productDescription' => 'nullable|string',
-            'buyingPrice'        => 'required|numeric',
-            'sellingPrice'       => 'required|numeric',
-            'quantity'           => 'required|integer',
-            'unit'               => 'nullable|string',
+            'unit'               => 'required|string',
             'brand'              => 'nullable|string',
-            'tax'                => 'nullable|numeric',
-            'profitMargin'       => 'nullable|numeric',
             'seriasId'           => 'nullable|integer',
-            'lowStock'           => 'nullable|integer',
-            'supplier_id'        => 'nullable|integer',
-            'batchNumber'        => 'nullable|string',
-            'expiryDate'         => 'nullable|date',
-            'purchaseDate'       => 'required|date',
+            'lowStock'           => 'required|integer',
         ]);
 
         $validated['createdBy'] = auth()->id();
@@ -63,46 +68,101 @@ class InventoryController extends Controller
             $validated['productImage'] = 'assets/' . $filename;
         }
 
-        // ✅ check if product with same code & batch exists
-        $existingProduct = Product::where('productCode', $validated['productCode'])
-            ->where('batchNumber', $validated['batchNumber'])
-            ->first();
+        // Set pricing fields as null - will be filled when stock is added
+        $validated['buyingPrice'] = null;
+        $validated['sellingPrice'] = null;
+        $validated['quantity'] = 0;
+        $validated['tax'] = null;
+        $validated['profitMargin'] = null;
+        $validated['batchNumber'] = null;
+        $validated['expiryDate'] = null;
+        $validated['purchaseDate'] = null;
 
-        if ($existingProduct) {
-            // ✅ Add quantity to existing one
-            $existingProduct->quantity += $validated['quantity'];
+        $product = Product::create($validated);
 
-            // ✅ Update other fields if needed (optional)
-            $existingProduct->fill([
-                'buyingPrice'        => $validated['buyingPrice'],
-                'sellingPrice'       => $validated['sellingPrice'],
-                'brand'              => $validated['brand'] ?? $existingProduct->brand,
-                'tax'                => $validated['tax'] ?? $existingProduct->tax,
-                'profitMargin'       => $validated['profitMargin'] ?? $existingProduct->profitMargin,
-                'unit'               => $validated['unit'] ?? $existingProduct->unit,
-                'lowStock'           => $validated['lowStock'] ?? $existingProduct->lowStock,
-                'productDescription' => $validated['productDescription'] ?? $existingProduct->productDescription,
-                'expiryDate'         => $validated['expiryDate'] ?? $existingProduct->expiryDate,
-                'purchaseDate'       => $validated['purchaseDate'] ?? $existingProduct->purchaseDate,
+        return response()->json([
+            'message' => 'Product created successfully. Add stock to set pricing.',
+            'product' => $product,
+        ], 201);
+    }
+
+    public function addStock(Request $request)
+    {
+        $mode = $request->input('mode', 'new');
+
+        if ($mode === 'existing') {
+            // Adding to existing batch
+            $validated = $request->validate([
+                'batchId'   => 'required|integer|exists:products,id',
+                'quantity'  => 'required|integer|min:1',
             ]);
 
-            if (isset($validated['productImage'])) {
-                $existingProduct->productImage = $validated['productImage'];
-            }
-
-            $existingProduct->save();
+            $product = Product::findOrFail($validated['batchId']);
+            $product->increment('quantity', $validated['quantity']);
 
             return response()->json([
-                'message' => 'Product quantity updated successfully',
-                'product' => $existingProduct,
+                'message' => "Added {$validated['quantity']} units to batch {$product->batchNumber}. New stock: {$product->quantity}",
+                'stock'   => $product->fresh(),
+            ], 200);
+        }
+
+        // Creating new batch (existing logic)
+        $validated = $request->validate([
+            'productId'     => 'required|integer|exists:products,id',
+            'buyingPrice'   => 'required|numeric',
+            'tax'           => 'nullable|numeric',
+            'profitMargin'  => 'nullable|numeric',
+            'sellingPrice'  => 'required|numeric',
+            'quantity'      => 'required|integer|min:1',
+            'batchNumber'   => 'nullable|string',
+            'purchaseDate'  => 'nullable|date',
+            'expiryDate'    => 'nullable|date',
+        ]);
+
+        $product = Product::findOrFail($validated['productId']);
+
+        // If buyingPrice is null (first stock addition), update the existing product
+        if (is_null($product->buyingPrice)) {
+            $product->update([
+                'buyingPrice'   => $validated['buyingPrice'],
+                'tax'           => $validated['tax'],
+                'profitMargin'  => $validated['profitMargin'],
+                'sellingPrice'  => $validated['sellingPrice'],
+                'quantity'      => $validated['quantity'],
+                'batchNumber'   => $validated['batchNumber'],
+                'purchaseDate'  => $validated['purchaseDate'],
+                'expiryDate'    => $validated['expiryDate'] ?? null,
+            ]);
+
+            return response()->json([
+                'message' => 'Stock added to product successfully',
+                'stock'   => $product->fresh(),
             ], 200);
         } else {
-            // 🆕 Create new record for a different batch
-            $product = Product::create($validated);
+            // If buyingPrice is not null, create a new product entry (new batch)
+            $newProduct = Product::create([
+                'productName'        => $product->productName,
+                'productCode'        => $product->productCode,
+                'productImage'       => $product->productImage,
+                'productDescription' => $product->productDescription,
+                'unit'               => $product->unit,
+                'brand'              => $product->brand,
+                'seriasId'           => $product->seriasId,
+                'lowStock'           => $product->lowStock,
+                'createdBy'          => auth()->id(),
+                'buyingPrice'        => $validated['buyingPrice'],
+                'tax'                => $validated['tax'],
+                'profitMargin'       => $validated['profitMargin'],
+                'sellingPrice'       => $validated['sellingPrice'],
+                'quantity'           => $validated['quantity'],
+                'batchNumber'        => $validated['batchNumber'],
+                'purchaseDate'       => $validated['purchaseDate'],
+                'expiryDate'         => $validated['expiryDate'] ?? null,
+            ]);
 
             return response()->json([
-                'message' => 'New product (different batch) created successfully',
-                'product' => $product,
+                'message' => 'New stock batch created successfully',
+                'stock'   => $newProduct,
             ], 201);
         }
     }
@@ -139,23 +199,14 @@ class InventoryController extends Controller
         }
 
         $validated = $request->validate([
-            'productName'        => 'nullable|string|max:255',
-            'productCode'        => 'required|string|max:255',
-            'productImage'       => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
-            'productDescription' => 'nullable|string',
-            'buyingPrice'        => 'required|numeric',
-            'sellingPrice'       => 'required|numeric',
-            'quantity'           => 'required|integer',
-            'unit'               => 'nullable|string',
-            'brand'              => 'nullable|string',
-            'tax'                => 'nullable|numeric',
-            'profitMargin'       => 'nullable|numeric',
+            'productCode'        => 'nullable|string|max:255',
+            'productDescription' => 'nullable|string|max:1000',
+            'unit'               => 'nullable|string|max:50',
+            'brand'              => 'nullable|string|max:255',
             'seriasId'           => 'nullable|integer',
-            'lowStock'           => 'nullable|integer',
-            'supplier_id'        => 'nullable|integer',
-            'batchNumber'        => 'nullable|string',
-            'expiryDate'         => 'nullable|date',
-            'purchaseDate'       => 'required|date',
+            'lowStock'           => 'nullable|integer|min:0',
+            'productName'        => 'nullable|string|max:255',
+            'productImage'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         // Handle image upload
@@ -172,6 +223,27 @@ class InventoryController extends Controller
         return response()->json([
             'message' => 'Product updated successfully',
             'product' => $product,
+        ], 200);
+    }
+
+    public function getBatches($productId)
+    {
+        // Get all products (batches) with the same product details
+        $baseProduct = Product::find($productId);
+        
+        if (!$baseProduct) {
+            return response()->json(['message' => 'Product not found'], 404);
+        }
+
+        // Find all batches for this product (same productName and productCode)
+        $batches = Product::where('productName', $baseProduct->productName)
+            ->where('productCode', $baseProduct->productCode)
+            ->whereNotNull('buyingPrice')
+            ->select('id', 'batchNumber', 'quantity', 'buyingPrice', 'tax', 'profitMargin', 'sellingPrice', 'purchaseDate')
+            ->get();
+
+        return response()->json([
+            'batches' => $batches,
         ], 200);
     }
 }

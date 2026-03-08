@@ -17,39 +17,16 @@ export default function CreateProductModal({
         productCode: "",
         productImage: null as File | null,
         seriasId: "",
-        profitMargin: "",
         productDescription: "",
-        buyingPrice: "",
-        tax: "",
-        sellingPrice: "",
-        quantity: "",
         unit: "",
         lowStock: "",
         brand: "",
-        batchNumber: "",
-        purchaseDate: "",
-        expiryDate: "",
     });
 
     const [errors, setErrors] = useState<{ [key: string]: string[] }>({});
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
-
-    // 🔹 Auto calculate selling price (no %)
-    useEffect(() => {
-        const buying = parseFloat(form.buyingPrice) || 0;
-        const tax = parseFloat(form.tax) || 0;
-        const margin = parseFloat(form.profitMargin) || 0;
-        const calculated = buying + tax + margin;
-
-        if (!isNaN(calculated)) {
-            setForm((prev) => ({
-                ...prev,
-                sellingPrice: calculated.toFixed(2),
-            }));
-        }
-    }, [form.buyingPrice, form.tax, form.profitMargin]);
 
     // 🔹 Input change
     const handleChange = (
@@ -128,13 +105,15 @@ export default function CreateProductModal({
                     <div className="grid grid-cols-2 gap-3">
                         {/* Product Name */}
                         <div>
-                            <label className="block text-sm font-medium">Product Name</label>
+                            <label className="block text-sm font-medium">
+                                Item Name
+                            </label>
                             <input
                                 type="text"
                                 name="productName"
                                 value={form.productName}
                                 onChange={handleChange}
-                                placeholder="Product Name"
+                                placeholder="Item Name"
                                 className="w-full border p-2 rounded"
                             />
                             {errors.productName && (
@@ -146,13 +125,15 @@ export default function CreateProductModal({
 
                         {/* Product Code */}
                         <div>
-                            <label className="block text-sm font-medium">Product Code</label>
+                            <label className="block text-sm font-medium">
+                                Part Number
+                            </label>
                             <input
                                 type="text"
                                 name="productCode"
                                 value={form.productCode}
                                 onChange={handleChange}
-                                placeholder="Product Code"
+                                placeholder="Part Number"
                                 className="w-full border p-2 rounded"
                             />
                             {errors.productCode && (
@@ -164,14 +145,18 @@ export default function CreateProductModal({
 
                         {/* Series */}
                         <div>
-                            <label className="block text-sm font-medium">Series Number</label>
+                            <label className="block text-sm font-medium">
+                                Vehicle Type
+                            </label>
                             <select
                                 name="seriasId"
                                 value={form.seriasId}
                                 onChange={handleChange}
                                 className="w-full border p-2 rounded"
                             >
-                                <option value="">-- Select Series --</option>
+                                <option value="">
+                                    -- Select Vehicle Type --
+                                </option>
                                 {seriasList?.map((s) => (
                                     <option key={s.id} value={s.id}>
                                         {s.seriasNo}
@@ -182,7 +167,9 @@ export default function CreateProductModal({
 
                         {/* Description */}
                         <div className="col-span-2">
-                            <label className="block text-sm font-medium">Description</label>
+                            <label className="block text-sm font-medium">
+                                Vehicle Description
+                            </label>
                             <textarea
                                 name="productDescription"
                                 value={form.productDescription}
@@ -192,75 +179,11 @@ export default function CreateProductModal({
                             />
                         </div>
 
-                        {/* Buying Price */}
-                        <div>
-                            <label className="block text-sm font-medium">Buying Price</label>
-                            <input
-                                type="number"
-                                name="buyingPrice"
-                                value={form.buyingPrice}
-                                onChange={handleChange}
-                                placeholder="Buying Price"
-                                className="w-full border p-2 rounded"
-                            />
-                        </div>
-
-                        {/* Tax */}
-                        <div>
-                            <label className="block text-sm font-medium">Tax</label>
-                            <input
-                                type="number"
-                                name="tax"
-                                value={form.tax}
-                                onChange={handleChange}
-                                placeholder="Tax"
-                                className="w-full border p-2 rounded"
-                            />
-                        </div>
-
-                        {/* Profit Margin (flat) */}
-                        <div>
-                            <label className="block text-sm font-medium">Profit Margin</label>
-                            <input
-                                type="number"
-                                name="profitMargin"
-                                value={form.profitMargin}
-                                onChange={handleChange}
-                                placeholder="Profit Margin (flat)"
-                                className="w-full border p-2 rounded"
-                            />
-                        </div>
-
-                        {/* Auto Selling Price */}
-                        <div>
-                            <label className="block text-sm font-medium">
-                                Selling Price (Auto)
-                            </label>
-                            <input
-                                type="number"
-                                name="sellingPrice"
-                                value={form.sellingPrice}
-                                readOnly
-                                className="w-full border p-2 rounded bg-gray-100 text-gray-600"
-                            />
-                        </div>
-
-                        {/* Quantity */}
-                        <div>
-                            <label className="block text-sm font-medium">Quantity</label>
-                            <input
-                                type="number"
-                                name="quantity"
-                                value={form.quantity}
-                                onChange={handleChange}
-                                placeholder="Quantity"
-                                className="w-full border p-2 rounded"
-                            />
-                        </div>
-
                         {/* Low Stock */}
                         <div>
-                            <label className="block text-sm font-medium">Low Stock</label>
+                            <label className="block text-sm font-medium">
+                                Low Stock
+                            </label>
                             <input
                                 type="number"
                                 name="lowStock"
@@ -273,7 +196,9 @@ export default function CreateProductModal({
 
                         {/* Unit */}
                         <div>
-                            <label className="block text-sm font-medium">Unit</label>
+                            <label className="block text-sm font-medium">
+                                Unit
+                            </label>
                             <input
                                 type="text"
                                 name="unit"
@@ -286,7 +211,9 @@ export default function CreateProductModal({
 
                         {/* Brand */}
                         <div>
-                            <label className="block text-sm font-medium">Brand</label>
+                            <label className="block text-sm font-medium">
+                                Brand
+                            </label>
                             <input
                                 type="text"
                                 name="brand"
@@ -297,34 +224,11 @@ export default function CreateProductModal({
                             />
                         </div>
 
-                        {/* Batch Number */}
-                        <div>
-                            <label className="block text-sm font-medium">Batch Number</label>
-                            <input
-                                type="text"
-                                name="batchNumber"
-                                value={form.batchNumber}
-                                onChange={handleChange}
-                                placeholder="Batch Number"
-                                className="w-full border p-2 rounded"
-                            />
-                        </div>
-
-                        {/* Purchase Date */}
-                        <div className="col-span-2">
-                            <label className="block text-sm font-medium">Purchase Date</label>
-                            <input
-                                type="date"
-                                name="purchaseDate"
-                                value={form.purchaseDate}
-                                onChange={handleChange}
-                                className="w-full border p-2 rounded"
-                            />
-                        </div>
-
                         {/* Product Image */}
                         <div className="col-span-2">
-                            <label className="block text-sm font-medium">Product Image</label>
+                            <label className="block text-sm font-medium">
+                                Product Image
+                            </label>
                             <input
                                 type="file"
                                 name="productImage"

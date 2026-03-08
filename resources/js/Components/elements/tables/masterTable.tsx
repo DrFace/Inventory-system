@@ -18,19 +18,19 @@ import "react-date-range/dist/styles.css"; // main style file
 import "react-date-range/dist/theme/default.css";
 
 export function TableBody({
-    key,
+    id,
     children,
     buttons,
 }: {
-    key: any;
+    id: any;
     children: any;
     buttons: any;
 }) {
     return (
-        <Disclosure as="tbody" className="w-full bg-white " key={key}>
+        <Disclosure as="tbody" className="w-full bg-white " key={id}>
             {({ open }) => (
                 <>
-                    <tr key={key + "p"}>
+                    <tr key={id + "p"}>
                         <TableTd width={10}>
                             <Disclosure.Button className="w-12 text-gray-900">
                                 <span className="flex items-center">
@@ -50,7 +50,7 @@ export function TableBody({
                         </TableTd>
                         {children}
                     </tr>
-                    <tr key={key + "c"}>
+                    <tr key={id + "c"}>
                         <Disclosure.Panel
                             as="td"
                             colSpan={100}
@@ -100,6 +100,7 @@ export default function MasterTable({
     links,
     children,
     statusFilter,
+    hideDateRange = false,
 }: {
     tableColumns: any;
     filters: any;
@@ -128,6 +129,7 @@ export default function MasterTable({
     links: any;
     children: any;
     statusFilter?: any;
+    hideDateRange?: boolean;
 }) {
     const [searchParam, setSearchParam, searchParamRef] = useStateRef(
         filters.searchParam ?? ""
@@ -154,23 +156,23 @@ export default function MasterTable({
 
 
     function revisitPage() {
-            router.get(
-                url,
-                {
-                    page: page,
-                    rowPerPage: rowPerPage,
-                    sortBy: sortBy,
-                    sortDirection: sortDirection,
-                    // searchParam: searchParam,
-                    searchParam: searchParamRef.current,
+        router.get(
+            url,
+            {
+                page: page,
+                rowPerPage: rowPerPage,
+                sortBy: sortBy,
+                sortDirection: sortDirection,
+                // searchParam: searchParam,
+                searchParam: searchParamRef.current,
 
-                    // status: search?.status ?? statusFilter?.status,
-                },
-                {
-                    replace: true,
-                    preserveState: true,
-                }
-            );
+                // status: search?.status ?? statusFilter?.status,
+            },
+            {
+                replace: true,
+                preserveState: true,
+            }
+        );
 
     }
 
@@ -235,8 +237,8 @@ export default function MasterTable({
     // }
     //     , [page, rowPerPage, sortBy, sortDirection, searchParam]);
 
-   useEffect(() => {
-    revisit();
+    useEffect(() => {
+        revisit();
     }, [date]);
 
     const resetDateFilters = () => {
@@ -295,7 +297,7 @@ export default function MasterTable({
 
     return (
         <>
-            <div className="mt-8 md:flex md:items-center md:justify-between">
+            {(!hideDateRange || !(search == undefined)) && <div className="mt-8 md:flex md:items-center md:justify-between">
                 <div className="flex-1 min-w-0">
                     {/* Filter */}
                     <div className="flex flex-col justify-between gap-2 p-4 space-x-2 overflow-hidden bg-white rounded-lg shadow sm:flex-row">
@@ -316,7 +318,7 @@ export default function MasterTable({
                                 />
                             )}
                             {/* Date Range */}
-                            <div className="flex flex-col">
+                            {!hideDateRange && <div className="flex flex-col">
 
                                 <div className="relative flex flex-row w-full mt-2">
                                     <span
@@ -351,7 +353,7 @@ export default function MasterTable({
                                         maxDate={new Date()}
                                     />
                                 )}
-                            </div>
+                            </div>}
                         </div>
                         <div className="flex justify-end space-x-4">
                             {createLink && (
@@ -392,7 +394,7 @@ export default function MasterTable({
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>}
 
             <div className="flow-root mt-8 bg-white rounded-lg shadow">
                 <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">

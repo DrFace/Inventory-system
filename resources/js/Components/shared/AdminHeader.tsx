@@ -132,20 +132,18 @@ const AdminHeader = ({
                         >
                             <Bars3CenterLeftIcon className="w-6 h-6 text-slate-200" />
                         </button>
-                        {/* <img
-                            className="h-[50px] object-contain"
-                            src={"/assets/images/ai-geeks.png"}
-                            alt="site logo"
-                        /> */}
+                        <img
+                            className="h-[40px] w-auto object-contain"
+                            src="/images/nmd_logo.png"
+                            alt="NMD logo"
+                        />
                     </div>
 
-                    {/* Center: Search Bar */}
-                    <div className="flex-1 mx-4">
-                        <input
-                            type="text"
-                            placeholder="Search product, supplier, order"
-                            className="w-full px-4 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+                    {/* Center: Title */}
+                    <div className="flex-1 flex justify-center items-center px-4 overflow-hidden">
+                        <h1 className="text-white text-base sm:text-lg lg:text-xl font-bold tracking-widest uppercase truncate">
+                            NAMERATHNA INVENTORY &amp; SALES SYSTEM
+                        </h1>
                     </div>
 
                     {/* Right: Notification + User */}

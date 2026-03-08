@@ -98,7 +98,7 @@ export default function UpdateProfileInformation({
                     </div>
                 )}
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center w-fit gap-4 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition">
                     <PrimaryButton disabled={processing}>Save</PrimaryButton>
 
                     <Transition

@@ -36,6 +36,18 @@ class BillingController extends Controller
     {
         $validated = $request->validated();
 
+        // Check if customer's credit period has expired before allowing credit purchase
+        if ($validated['paymentMethod'] === 'credit' && $validated['customerId']) {
+            $customer = Customer::find($validated['customerId']);
+            
+            if ($customer && !$customer->canPurchase) {
+                return response()->json([
+                    'message' => 'This customer cannot make credit purchases. Credit period has expired. Please settle outstanding credit first.',
+                    'error' => 'credit_period_expired'
+                ], 403);
+            }
+        }
+
         return DB::transaction(function () use ($validated) {
 
             $sale = Sales::create([
@@ -48,6 +60,7 @@ class BillingController extends Controller
                 'cashAmount'    => $validated['cashAmount'] ?? 0,
                 'cardAmount'    => $validated['cardAmount'] ?? 0,
                 'creditAmount'  => $validated['creditAmount'] ?? 0,
+                'discount_value'=> $validated['discountAmount'] ?? 0,
                 'paymentMethod' => $validated['paymentMethod'],
                 'status'        => $validated['status'],
                 'billNumber'    => 'BILL-' . time(),
@@ -67,6 +80,17 @@ class BillingController extends Controller
                     ]);
 
                     Product::where('id', $item['id'])->decrement('quantity', $item['quantity']);
+                }
+
+                // Update customer's currentCreditSpend if payment method is credit
+                if ($validated['paymentMethod'] === 'credit' && $validated['customerId']) {
+                    $customer = Customer::find($validated['customerId']);
+                    if ($customer) {
+                        $customer->increment('currentCreditSpend', $validated['creditAmount'] ?? 0);
+                        // Update credit period status after purchase
+                        $customer->refresh();
+                        $customer->updateCreditPeriodStatus();
+                    }
                 }
             }
 
@@ -89,40 +113,159 @@ class BillingController extends Controller
             return response()->json([]);
         }
 
-        $customers = Customer::where('contactNumber', 'like', "%$query%")
+        $customers = Customer::with('discountCategory:id,name,type,value')
+            ->where('contactNumber', 'like', "%$query%")
             ->orWhere('name', 'like', "%$query%")
             ->limit(5)
-            ->get(['id', 'name', 'contactNumber', 'discountValue', 'discountType', 'creditBalance']);
+            ->get(['id', 'name', 'contactNumber', 'email', 'discount_category_id', 'creditBalance', 'creditLimit', 'currentCreditSpend', 'canPurchase', 'creditPeriodExpiresAt']);
 
         return response()->json($customers);
     }
 
-    public function invoice($id)
+    public function invoice($id, Request $request)
     {
+        if ($id === 'template') {
+            $sale = (object)[
+                'id' => 0,
+                'invoice_number' => 'INV-XXXX',
+                'created_at' => now()->format('Y-m-d H:i:s'),
+                'customer_name' => 'CUSTOMER NAME',
+                'customer_contact' => '07XXXXXXXX',
+                'customer_email' => 'customer@example.com',
+                'customer_address' => 'Customer Address',
+                'customer_vat_number' => 'VAT-XXXX',
+                'payment_method' => 'CASH',
+                'status' => 'approved',
+                'total_amount' => 0,
+                'discount_amount' => 0,
+                'discount_type' => 'fixed',
+                'discount_value' => 0,
+                'net_total' => 0,
+                'paid_amount' => 0,
+                'balance' => 0,
+                'items' => collect([]),
+                'discount_category_name' => null,
+            ];
+        } else {
+            $sale = Sales::with([
+                'items.product:id,productName,productCode',
+                'customer:id,name,contactNumber,email,address,vatNumber,discount_category_id',
+                'customer.discountCategory:id,name,type,value'
+            ])->findOrFail($id);
+            
+            $sale->items->transform(function ($item) {
+                $item->productName = $item->product?->productName;
+                $item->productCode = $item->product?->productCode;
+                unset($item->product);
+                return $item;
+            });
+        }
+        
+        if ($id !== 'template' && $sale->customer) {
+            $sale->customer_name = $sale->customer->name;
+            $sale->customer_contact = $sale->customer->contactNumber;
+            $sale->customer_email = $sale->customer->email;
+            $sale->customer_address = $sale->customer->address;
+            $sale->customer_vat_number = $sale->customer->vatNumber;
+            
+            // Add discount category info
+            if ($sale->customer->discountCategory) {
+                $sale->discount_category_name = $sale->customer->discountCategory->name;
+                $sale->discount_category_type = $sale->customer->discountCategory->type;
+                $sale->discount_category_value = $sale->customer->discountCategory->value;
+            }
+            
+            unset($sale->customer);
+        }
+        
+        // Get company VAT number from settings
+        $vatNumber = \App\Models\Setting::getSetting('company_vat_number', '');
+        
+        // Get currency from query parameter (default to LKR)
+        $currency = strtoupper($request->query('currency', 'LKR'));
+        
+        // Get exchange rate if USD is requested
+        $exchangeRate = null;
+        if ($currency === 'USD') {
+            $rate = \App\Models\CurrencyRate::getCurrentRate('USD', 'LKR');
+            $exchangeRate = $rate ?? 320; // Default to 320 if not set
+        }
+        
+        // Get print mode from query parameter (full, template, details)
+        $printMode = $request->query('mode', 'full');
+        $download = $request->query('download') == '1';
+        
+        return Inertia::render('Billing/InvoicePrint', [
+            'invoice' => $sale,
+            'vatNumber' => $vatNumber,
+            'currency' => $currency,
+            'exchangeRate' => $exchangeRate,
+            'printMode' => $printMode,
+            'download' => $download,
+        ]);
+    }
+
+    /**
+     * ✅ NEW: View invoice without auto-print + allow PDF download client-side.
+     */
+    public function invoiceView($id, Request $request)
+    {
+        // Same data prep as invoice()
         $sale = Sales::with([
             'items.product:id,productName,productCode',
-            'customer:id,name,contactNumber,email,address'
+            'customer:id,name,contactNumber,email,address,vatNumber,discount_category_id',
+            'customer.discountCategory:id,name,type,value'
         ])->findOrFail($id);
-        
+
         $sale->items->transform(function ($item) {
             $item->productName = $item->product?->productName;
             $item->productCode = $item->product?->productCode;
             unset($item->product);
             return $item;
         });
-        
+
         if ($sale->customer) {
             $sale->customer_name = $sale->customer->name;
             $sale->customer_contact = $sale->customer->contactNumber;
             $sale->customer_email = $sale->customer->email;
             $sale->customer_address = $sale->customer->address;
+            $sale->customer_vat_number = $sale->customer->vatNumber;
+
+            // Add discount category info
+            if ($sale->customer->discountCategory) {
+                $sale->discount_category_name = $sale->customer->discountCategory->name;
+                $sale->discount_category_type = $sale->customer->discountCategory->type;
+                $sale->discount_category_value = $sale->customer->discountCategory->value;
+            }
+
             unset($sale->customer);
         }
-        
-        return Inertia::render('Billing/InvoicePrint', [
+
+        // Get company VAT number from settings
+        $vatNumber = \App\Models\Setting::getSetting('company_vat_number', '');
+
+        // Get currency from query parameter (default to LKR)
+        $currency = strtoupper($request->query('currency', 'LKR'));
+
+        // Get exchange rate if USD is requested
+        $exchangeRate = null;
+        if ($currency === 'USD') {
+            $rate = \App\Models\CurrencyRate::getCurrentRate('USD', 'LKR');
+            $exchangeRate = $rate ?? 320; // Default to 320 if not set
+        }
+
+        // Get default print mode from settings
+        $defaultPrintMode = \App\Models\Setting::getSetting('default_print_mode', 'details');
+
+        return Inertia::render('Billing/InvoiceView', [
             'invoice' => $sale,
+            'vatNumber' => $vatNumber,
+            'currency' => $currency,
+            'exchangeRate' => $exchangeRate,
+            'defaultPrintMode' => $defaultPrintMode,
         ]);
     }
+
     /**
      * Display the specified resource.
      */
