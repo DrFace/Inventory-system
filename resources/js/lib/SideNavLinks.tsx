@@ -114,6 +114,7 @@ const SideNavLinks: React.FC = () => {
             count: 0,
             disabled: !isAdmin, // Only admins can access settings
         },
+
         {
             name: "Discount Categories",
             link: true,
@@ -155,8 +156,19 @@ const SideNavLinks: React.FC = () => {
                 ))}
             </div>
 
-            {/* Logout Button */}
+            {/* Bottom Actions */}
             <div className="mt-auto pt-4 pb-4 border-t border-gray-300">
+                <NavItem
+                    name="Profile"
+                    routeName={route("profile.edit")}
+                    startWith="/profile"
+                    icon="UserIcon"
+                    link={true}
+                    count={0}
+                    border={false}
+                    disabled={false}
+                    children={undefined}
+                />
                 <button
                     onClick={handleLogout}
                     className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors group"
