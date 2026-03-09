@@ -33,6 +33,16 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if (auth()->user()->role === \App\Models\User::ROLE_USER) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'You do not have permission to access this website.',
+            ]);
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
