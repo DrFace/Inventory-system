@@ -44,7 +44,7 @@ class RegisteredUserController extends Controller
             'phone_number' => $request->phone_number, // optional
             'avatar'       => null,
             'position'     => null,
-            'role'         => '2', // default role
+            'role'         => User::ROLE_USER, // default role
             'is_active'    => true,   // default active
             'password'     => Hash::make($request->password),
         ]);
