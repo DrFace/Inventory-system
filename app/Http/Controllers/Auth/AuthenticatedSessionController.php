@@ -39,7 +39,7 @@ class AuthenticatedSessionController extends Controller
             $request->session()->regenerateToken();
 
             return redirect()->route('login')->withErrors([
-                'email' => 'You do not have permission to access this website.',
+                'email' => 'Your account is not authorized to access this website. Please contact the administrator for assistance.',
             ]);
         }
 

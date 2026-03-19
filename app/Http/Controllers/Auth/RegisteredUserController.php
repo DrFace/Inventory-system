@@ -50,6 +50,12 @@ class RegisteredUserController extends Controller
         ]);
 
         event(new Registered($user));
+        
+        if ($user->role === User::ROLE_USER) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'Your account is not authorized to access this website. Please contact the administrator for assistance.',
+            ]);
+        }
 
         Auth::login($user);
 
