@@ -195,14 +195,14 @@ export default function InvoicePrint({
 
                                 <div className="flex flex-col">
                                     <h1 className="text-4xl font-bold text-black tracking-wide leading-tight">
-                                        NAMARATNA
+                                        NAMARATNE
                                     </h1>
                                     <h2 className="text-xl font-semibold text-gray-800 leading-tight">
                                         Motor Distributors
                                     </h2>
                                     <p className="text-xs text-gray-600 mt-1">
                                         Direct importers and island-wide
-                                        distributors for ESP shock absorbers
+                                        distributors for EEP shock absorbers
                                     </p>
                                 </div>
                             </div>

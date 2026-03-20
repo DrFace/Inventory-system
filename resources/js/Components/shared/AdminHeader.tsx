@@ -142,7 +142,7 @@ const AdminHeader = ({
                     {/* Center: Title */}
                     <div className="flex-1 flex justify-center items-center px-4 overflow-hidden">
                         <h1 className="text-white text-base sm:text-lg lg:text-xl font-bold tracking-widest uppercase truncate">
-                            NAMERATHNA INVENTORY &amp; SALES SYSTEM
+                            NAMARATNE INVENTORY &amp; SALES SYSTEM
                         </h1>
                     </div>
 

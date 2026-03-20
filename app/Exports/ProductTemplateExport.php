@@ -13,9 +13,9 @@ class ProductTemplateExport implements WithHeadings, ShouldAutoSize
     public function headings(): array
     {
         return [
-            'Product Name',
-            'Product Code',
-            'Description',
+            'Item Name',
+            'Item Code',
+            'Vehicle Description',
             'Buying Price',
             'Selling Price',
             'Tax',
